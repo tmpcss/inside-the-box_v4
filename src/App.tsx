@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+// MADE BYtomi
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type SceneType = 'camera' | 'trailer' | 'fileinput' | 'grid_img' | 'gradient' | 'win98' | 'white';
@@ -1540,406 +1541,406 @@ export default function App() {
       {/* ── MAIN ROW (3 columns) ── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
-      {/* ── LEFT SIDEBAR (Escenas + Cámara) ── */}
-      <div style={{ width: 300, borderRight: '1px solid #222', overflowY: 'auto', flexShrink: 0 }} onPointerDown={e => e.stopPropagation()}>
-        {/* PANEL: Cámara Virtual */}
-        <div style={{ borderBottom: '1px solid #222' }}>
-          <button
-            style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showCameraSection ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-            onClick={() => setShowCameraSection(v => !v)}
-          >
-            <span>📹 CÁMARA VIRTUAL</span>
-            <span>{showCameraSection ? '▼' : '▶'}</span>
-          </button>
-          {showCameraSection && (
-            <div style={{ padding: '0 16px 16px' }}>
-              <select
-                style={{ width: '100%', fontSize: 10, padding: '6px 8px', background: '#111', color: '#ccc', border: '2px solid #333', fontFamily: 'inherit', marginBottom: 8 }}
-                value={selectedCamId}
-                onChange={e => setSelectedCamId(e.target.value)}
-              >
-                {cameraList.length === 0 && <option>— sin cámaras detectadas —</option>}
-                {cameraList.map(c => (
-                  <option key={c.deviceId} value={c.deviceId}>{c.label || `Cam ${c.deviceId.slice(0, 8)}…`}</option>
-                ))}
-              </select>
-              <button
-                style={cameraActive
-                  ? { width: '100%', background: '#f5f5f5', color: '#000', border: '2px solid #f5f5f5', padding: '8px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', fontWeight: 500, marginBottom: 12 }
-                  : { width: '100%', background: 'transparent', color: '#f5f5f5', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', marginBottom: 12 }
-                }
-                onClick={cameraActive ? stopCamera : startCamera}
-              >{cameraActive ? '⏹ DETENER CÁMARA' : '▶ INICIAR CÁMARA'}</button>
-              <div style={{ border: '2px dashed #333', padding: '16px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
-                <p style={{ fontSize: 10, color: '#666', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>📁 CARGAR ARCHIVO</p>
-                <p style={{ fontSize: 9, color: '#444' }}>Video (.mp4) o Imagen (.png)</p>
-                <input type="file" accept="video/*,image/*"
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-                  onChange={e => { const file = e.target.files?.[0]; if (file) handleFileInput(file); }}
-                />
-              </div>
-              {cameraActive && (
-                <div style={{ marginTop: 8, padding: '8px', border: '1px solid #1a3a1a', textAlign: 'center' }}>
-                  <p style={{ fontSize: 10, color: '#00FF85' }}>● CÁMARA ACTIVA</p>
-                  <p style={{ fontSize: 9, color: '#555', marginTop: 4 }}>{cameraResolution.w}×{cameraResolution.h}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* PANEL: Escenas */}
-        <div style={{ borderBottom: '1px solid #222' }}>
-          <button
-            style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showFacePanel ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-            onClick={() => setShowFacePanel(v => !v)}
-          >
-            <span>ESCENAS</span>
-            <span>{showFacePanel ? '▼' : '▶'}</span>
-          </button>
-          {showFacePanel && (
-            <div style={{ padding: '0 16px 16px' }}>
-              {/* Master Projection */}
-              <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Master Projection</span>
-                  <span style={{ fontSize: 11, color: '#ccc', fontFamily: 'monospace' }}>{(offFaceOpacity * 100).toFixed(0)}%</span>
-                </div>
-                <input type="range" min="0" max="1" step="0.01" value={offFaceOpacity}
-                  onChange={e => setOffFaceOpacity(parseFloat(e.target.value))} style={{ width: '100%' }} />
-              </div>
-              {/* Sync */}
-              <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
-                <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Sync a todas</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <select
-                    style={{ flex: 1, fontSize: 10, padding: '6px', background: '#111', color: '#ccc', border: '2px solid #333', fontFamily: 'inherit' }}
-                    value={syncScene} onChange={e => setSyncScene(e.target.value as SceneType)}
-                  >
-                    {SCENE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                  <button
-                    style={{ background: '#00FF85', color: '#000', border: '2px solid #00FF85', padding: '6px 12px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
-                    onClick={() => setFaces(prev => prev.map(f => ({ ...f, scene: syncScene })))}
-                  >▶ SYNC</button>
-                </div>
-              </div>
-              {/* Previews toggle */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Previews</span>
-                <button
-                  style={{ fontSize: 9, padding: '4px 10px', border: `2px solid ${showPreviews ? '#00FF85' : '#333'}`, color: showPreviews ? '#00FF85' : '#555', background: 'transparent', fontFamily: 'inherit', cursor: 'pointer' }}
-                  onClick={() => setShowPreviews(v => !v)}
-                >{showPreviews ? 'OCULTAR' : 'MOSTRAR'}</button>
-              </div>
-              {/* Per-face */}
-              {faces.map(face => (
-                <div key={face.id} style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #1a1a1a' }}>
-                  {showPreviews && (
-                    <canvas
-                      ref={el => { if (el) previewCanvasesRef.current.set(face.id, el); else previewCanvasesRef.current.delete(face.id); }}
-                      width={112} height={63}
-                      style={{ display: 'block', width: '50%', border: '1px solid #222', background: '#000', marginBottom: 6 }}
-                    />
-                  )}
-                  <input
-                    style={{ width: '100%', fontSize: 10, background: 'transparent', border: 'none', borderBottom: '1px solid #222', color: '#666', fontFamily: 'inherit', padding: '2px 0', marginBottom: 6, outline: 'none' }}
-                    value={face.name} onChange={e => updateFace(face.id, { name: e.target.value })}
-                  />
-                  <select
-                    style={{ width: '100%', fontSize: 10, padding: '6px 8px', background: '#111', color: '#ccc', border: '2px solid #333', fontFamily: 'inherit' }}
-                    value={face.scene} onChange={e => updateFace(face.id, { scene: e.target.value as SceneType })}
-                  >
-                    {SCENE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                  {face.scene !== 'white' && face.scene !== 'camera' && (
-                    <div style={{ marginTop: 8, padding: '8px', border: '1px solid #1a1a1a' }}>
-                      <span style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Variación</span>
-                      {(face.scene === 'gradient' || face.scene === 'win98') && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                          <span style={{ fontSize: 9, color: '#555' }}>Velocidad</span>
-                          <input type="range" min={0.1} max={3} step={0.1} value={face.params?.speed || 1}
-                            onChange={e => updateFace(face.id, { params: { ...face.params, speed: +e.target.value } })}
-                            style={{ flex: 1 }} />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      </div>{/* end left sidebar */}
-
-      {/* ── CENTER: Three.js Viewport ── */}
-      <div ref={containerRef} style={{ flex: 1, position: 'relative', minWidth: 0 }} />
-
-      {/* ── RIGHT: Controles (320px) ── */}
-      <div style={{ width: 320, borderLeft: '1px solid #222', overflowY: 'auto', flexShrink: 0 }} onPointerDown={e => e.stopPropagation()}>
-
-        {/* LUCES */}
-        <div style={{ borderBottom: '1px solid #222' }}>
-          <button
-            style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showLightPanel ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-            onClick={() => setShowLightPanel(v => !v)}
-          >
-            <span>LUCES</span>
-            <span>{showLightPanel ? '▼' : '▶'}</span>
-          </button>
-          {showLightPanel && (
-            <div style={{ padding: '0 16px 16px' }}>
-              {/* Light Presets */}
-              <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
-                <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Presets</label>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <input type="text" placeholder="Nombre…" value={presetName}
-                    onChange={e => setPresetName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && savePreset()}
-                    style={{ flex: 1, fontSize: 10, background: '#0a0a0a', border: '2px solid #333', color: '#ccc', fontFamily: 'inherit', padding: '6px 8px' }}
-                  />
-                  <button
-                    style={{ background: '#00FF85', color: '#000', border: '2px solid #00FF85', padding: '6px 12px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }}
-                    onClick={savePreset}
-                  >SAVE</button>
-                </div>
-                {lightPresets.length === 0 && <p style={{ fontSize: 9, color: '#444', fontStyle: 'italic' }}>Sin presets guardados</p>}
-                <div style={{ maxHeight: 120, overflowY: 'auto' }}>
-                  {lightPresets.map(p => (
-                    <div key={p.name} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-                      <button
-                        style={{ flex: 1, textAlign: 'left', fontSize: 9, padding: '6px 8px', background: '#111', color: '#aaa', border: '2px solid #222', fontFamily: 'inherit', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                        onClick={() => loadPreset(p)}
-                      >▶ {p.name}</button>
-                      <button
-                        style={{ fontSize: 9, padding: '6px 8px', background: 'transparent', color: '#ff4444', border: '2px solid #330000', fontFamily: 'inherit', cursor: 'pointer' }}
-                        onClick={() => deletePreset(p.name)}
-                      >✕</button>
-                    </div>
+        {/* ── LEFT SIDEBAR (Escenas + Cámara) ── */}
+        <div style={{ width: 300, borderRight: '1px solid #222', overflowY: 'auto', flexShrink: 0 }} onPointerDown={e => e.stopPropagation()}>
+          {/* PANEL: Cámara Virtual */}
+          <div style={{ borderBottom: '1px solid #222' }}>
+            <button
+              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showCameraSection ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+              onClick={() => setShowCameraSection(v => !v)}
+            >
+              <span>📹 CÁMARA VIRTUAL</span>
+              <span>{showCameraSection ? '▼' : '▶'}</span>
+            </button>
+            {showCameraSection && (
+              <div style={{ padding: '0 16px 16px' }}>
+                <select
+                  style={{ width: '100%', fontSize: 10, padding: '6px 8px', background: '#111', color: '#ccc', border: '2px solid #333', fontFamily: 'inherit', marginBottom: 8 }}
+                  value={selectedCamId}
+                  onChange={e => setSelectedCamId(e.target.value)}
+                >
+                  {cameraList.length === 0 && <option>— sin cámaras detectadas —</option>}
+                  {cameraList.map(c => (
+                    <option key={c.deviceId} value={c.deviceId}>{c.label || `Cam ${c.deviceId.slice(0, 8)}…`}</option>
                   ))}
-                </div>
-              </div>
-
-              {/* Master controls */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                </select>
                 <button
-                  style={lightsAllOff
-                    ? { flex: 1, background: '#ff3333', color: '#fff', border: '2px solid #ff3333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
-                    : { flex: 1, background: 'transparent', color: '#555', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                  style={cameraActive
+                    ? { width: '100%', background: '#f5f5f5', color: '#000', border: '2px solid #f5f5f5', padding: '8px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', fontWeight: 500, marginBottom: 12 }
+                    : { width: '100%', background: 'transparent', color: '#f5f5f5', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', marginBottom: 12 }
                   }
-                  onClick={() => setLightsAllOff(v => !v)}
-                >{lightsAllOff ? '🔴 APAGADO' : '⚡ ENCENDIDO'}</button>
-                <button
-                  style={chaserActive
-                    ? { flex: 1, background: '#00FF85', color: '#000', border: '2px solid #00FF85', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
-                    : { flex: 1, background: 'transparent', color: '#555', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                  }
-                  onClick={() => setChaserActive(v => !v)}
-                >⚡ CHASE</button>
-              </div>
-              {chaserActive && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', minWidth: 32 }}>BPM</span>
-                  <input type="range" min={30} max={300} step={1} value={chaserBpm}
-                    onChange={e => setChaserBpm(+e.target.value)} style={{ flex: 1 }} />
-                  <input type="number" min={30} max={300} value={chaserBpm}
-                    onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setChaserBpm(Math.max(30, Math.min(300, v))); }}
-                    style={{ width: 48, fontSize: 9, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '4px' }} />
-                </div>
-              )}
-
-              {/* Light tabs */}
-              <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
-                {lights.map((l, i) => {
-                  const typeEmoji = l.type === 'spot' ? '🔦' : '💡';
-                  return (
-                    <button key={i}
-                      style={{ flex: 1, fontSize: 10, padding: '6px 4px', background: l.color, color: '#000', fontWeight: 'bold', border: activeLightTab === i ? '2px solid #fff' : '2px solid transparent', opacity: lightsAllOff ? 0.2 : Math.max(0.35, Math.min(1, l.intensity / 4)), cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                      onClick={() => setActiveLightTab(i)}
-                    >{typeEmoji} {l.name.split(' ')[1]}</button>
-                  );
-                })}
-              </div>
-
-              {(() => {
-                const l = lights[activeLightTab];
-                if (!l) return null;
-                const i = activeLightTab;
-                const numInput = (val: number, min: number, max: number, step: number, key: string) => (
-                  <input type="number" min={min} max={max} step={step} value={val}
-                    onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) updateLight(i, { [key]: Math.max(min, Math.min(max, v)) }); }}
-                    style={{ width: 52, fontSize: 9, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '3px 4px' }}
+                  onClick={cameraActive ? stopCamera : startCamera}
+                >{cameraActive ? '⏹ DETENER CÁMARA' : '▶ INICIAR CÁMARA'}</button>
+                <div style={{ border: '2px dashed #333', padding: '16px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
+                  <p style={{ fontSize: 10, color: '#666', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>📁 CARGAR ARCHIVO</p>
+                  <p style={{ fontSize: 9, color: '#444' }}>Video (.mp4) o Imagen (.png)</p>
+                  <input type="file" accept="video/*,image/*"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                    onChange={e => { const file = e.target.files?.[0]; if (file) handleFileInput(file); }}
                   />
-                );
-                return (
-                  <div>
-                    <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
-                      {(['point', 'spot', 'led'] as LightType[]).map(t => (
-                        <button key={t}
-                          style={l.type === t
-                            ? { flex: 1, fontSize: 9, padding: '8px 4px', background: '#f5f5f5', color: '#000', border: '2px solid #f5f5f5', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }
-                            : { flex: 1, fontSize: 9, padding: '8px 4px', background: 'transparent', color: '#666', border: '2px solid #333', cursor: 'pointer', fontFamily: 'inherit' }
-                          }
-                          onClick={() => switchLightType(i, t)}>
-                          {t === 'point' ? '💡 POINT' : t === 'spot' ? '🔦 SPOT' : '💡 LEDS'}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                      <input type="color" value={l.color} onChange={e => updateLight(i, { color: e.target.value })}
-                        style={{ width: 40, height: 32, cursor: 'pointer', border: '2px solid #333', background: 'transparent' }} />
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Intensidad</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <input type="range" min={0} max={10} step={0.1} value={l.intensity}
-                            onChange={e => updateLight(i, { intensity: +e.target.value })} style={{ flex: 1 }} />
-                          {numInput(l.intensity, 0, 10, 0.1, 'intensity')}
-                        </div>
-                      </div>
-                    </div>
-                    {l.type === 'led' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                        <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', minWidth: 36 }}>LEDs</span>
-                        <input type="range" min={2} max={48} step={1} value={l.ledCount ?? 12}
-                          onChange={e => { updateLight(i, { ledCount: +e.target.value }); switchLightType(i, 'led'); }} style={{ flex: 1 }} />
-                        {numInput(l.ledCount ?? 12, 2, 48, 1, 'ledCount')}
+                </div>
+                {cameraActive && (
+                  <div style={{ marginTop: 8, padding: '8px', border: '1px solid #1a3a1a', textAlign: 'center' }}>
+                    <p style={{ fontSize: 10, color: '#00FF85' }}>● CÁMARA ACTIVA</p>
+                    <p style={{ fontSize: 9, color: '#555', marginTop: 4 }}>{cameraResolution.w}×{cameraResolution.h}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* PANEL: Escenas */}
+          <div style={{ borderBottom: '1px solid #222' }}>
+            <button
+              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showFacePanel ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+              onClick={() => setShowFacePanel(v => !v)}
+            >
+              <span>ESCENAS</span>
+              <span>{showFacePanel ? '▼' : '▶'}</span>
+            </button>
+            {showFacePanel && (
+              <div style={{ padding: '0 16px 16px' }}>
+                {/* Master Projection */}
+                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Master Projection</span>
+                    <span style={{ fontSize: 11, color: '#ccc', fontFamily: 'monospace' }}>{(offFaceOpacity * 100).toFixed(0)}%</span>
+                  </div>
+                  <input type="range" min="0" max="1" step="0.01" value={offFaceOpacity}
+                    onChange={e => setOffFaceOpacity(parseFloat(e.target.value))} style={{ width: '100%' }} />
+                </div>
+                {/* Sync */}
+                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
+                  <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Sync a todas</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <select
+                      style={{ flex: 1, fontSize: 10, padding: '6px', background: '#111', color: '#ccc', border: '2px solid #333', fontFamily: 'inherit' }}
+                      value={syncScene} onChange={e => setSyncScene(e.target.value as SceneType)}
+                    >
+                      {SCENE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <button
+                      style={{ background: '#00FF85', color: '#000', border: '2px solid #00FF85', padding: '6px 12px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                      onClick={() => setFaces(prev => prev.map(f => ({ ...f, scene: syncScene })))}
+                    >▶ SYNC</button>
+                  </div>
+                </div>
+                {/* Previews toggle */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Previews</span>
+                  <button
+                    style={{ fontSize: 9, padding: '4px 10px', border: `2px solid ${showPreviews ? '#00FF85' : '#333'}`, color: showPreviews ? '#00FF85' : '#555', background: 'transparent', fontFamily: 'inherit', cursor: 'pointer' }}
+                    onClick={() => setShowPreviews(v => !v)}
+                  >{showPreviews ? 'OCULTAR' : 'MOSTRAR'}</button>
+                </div>
+                {/* Per-face */}
+                {faces.map(face => (
+                  <div key={face.id} style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #1a1a1a' }}>
+                    {showPreviews && (
+                      <canvas
+                        ref={el => { if (el) previewCanvasesRef.current.set(face.id, el); else previewCanvasesRef.current.delete(face.id); }}
+                        width={112} height={63}
+                        style={{ display: 'block', width: '50%', border: '1px solid #222', background: '#000', marginBottom: 6 }}
+                      />
+                    )}
+                    <input
+                      style={{ width: '100%', fontSize: 10, background: 'transparent', border: 'none', borderBottom: '1px solid #222', color: '#666', fontFamily: 'inherit', padding: '2px 0', marginBottom: 6, outline: 'none' }}
+                      value={face.name} onChange={e => updateFace(face.id, { name: e.target.value })}
+                    />
+                    <select
+                      style={{ width: '100%', fontSize: 10, padding: '6px 8px', background: '#111', color: '#ccc', border: '2px solid #333', fontFamily: 'inherit' }}
+                      value={face.scene} onChange={e => updateFace(face.id, { scene: e.target.value as SceneType })}
+                    >
+                      {SCENE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    {face.scene !== 'white' && face.scene !== 'camera' && (
+                      <div style={{ marginTop: 8, padding: '8px', border: '1px solid #1a1a1a' }}>
+                        <span style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Variación</span>
+                        {(face.scene === 'gradient' || face.scene === 'win98') && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                            <span style={{ fontSize: 9, color: '#555' }}>Velocidad</span>
+                            <input type="range" min={0.1} max={3} step={0.1} value={face.params?.speed || 1}
+                              onChange={e => updateFace(face.id, { params: { ...face.params, speed: +e.target.value } })}
+                              style={{ flex: 1 }} />
+                          </div>
+                        )}
                       </div>
                     )}
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <div className={`toggle-switch ${l.strobe ? 'active' : ''}`} onClick={() => updateLight(i, { strobe: !l.strobe })} />
-                        <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase' }}>Strobe</span>
-                      </div>
-                      {l.strobe && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', minWidth: 24 }}>Hz</span>
-                          <input type="range" min={0.5} max={20} step={0.5} value={l.strobeHz ?? 3}
-                            onChange={e => updateLight(i, { strobeHz: +e.target.value })} style={{ flex: 1 }} />
-                          {numInput(l.strobeHz ?? 3, 0.5, 20, 0.5, 'strobeHz')}
-                        </div>
-                      )}
-                    </div>
-                    <p style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Posición XYZ</p>
-                    {(['x', 'y', 'z'] as const).map(ax => (
-                      <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 500, minWidth: 12, color: ax === 'x' ? '#f66' : ax === 'y' ? '#6f6' : '#66f' }}>{ax.toUpperCase()}</span>
-                        <input type="range" min={-2.5} max={2.5} step={0.02} value={l[ax]}
-                          onChange={e => updateLight(i, { [ax]: +e.target.value })} style={{ flex: 1 }} />
-                        {numInput(l[ax], -2.5, 2.5, 0.01, ax)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>{/* end left sidebar */}
+
+        {/* ── CENTER: Three.js Viewport ── */}
+        <div ref={containerRef} style={{ flex: 1, position: 'relative', minWidth: 0 }} />
+
+        {/* ── RIGHT: Controles (320px) ── */}
+        <div style={{ width: 320, borderLeft: '1px solid #222', overflowY: 'auto', flexShrink: 0 }} onPointerDown={e => e.stopPropagation()}>
+
+          {/* LUCES */}
+          <div style={{ borderBottom: '1px solid #222' }}>
+            <button
+              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showLightPanel ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+              onClick={() => setShowLightPanel(v => !v)}
+            >
+              <span>LUCES</span>
+              <span>{showLightPanel ? '▼' : '▶'}</span>
+            </button>
+            {showLightPanel && (
+              <div style={{ padding: '0 16px 16px' }}>
+                {/* Light Presets */}
+                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
+                  <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Presets</label>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <input type="text" placeholder="Nombre…" value={presetName}
+                      onChange={e => setPresetName(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && savePreset()}
+                      style={{ flex: 1, fontSize: 10, background: '#0a0a0a', border: '2px solid #333', color: '#ccc', fontFamily: 'inherit', padding: '6px 8px' }}
+                    />
+                    <button
+                      style={{ background: '#00FF85', color: '#000', border: '2px solid #00FF85', padding: '6px 12px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }}
+                      onClick={savePreset}
+                    >SAVE</button>
+                  </div>
+                  {lightPresets.length === 0 && <p style={{ fontSize: 9, color: '#444', fontStyle: 'italic' }}>Sin presets guardados</p>}
+                  <div style={{ maxHeight: 120, overflowY: 'auto' }}>
+                    {lightPresets.map(p => (
+                      <div key={p.name} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                        <button
+                          style={{ flex: 1, textAlign: 'left', fontSize: 9, padding: '6px 8px', background: '#111', color: '#aaa', border: '2px solid #222', fontFamily: 'inherit', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          onClick={() => loadPreset(p)}
+                        >▶ {p.name}</button>
+                        <button
+                          style={{ fontSize: 9, padding: '6px 8px', background: 'transparent', color: '#ff4444', border: '2px solid #330000', fontFamily: 'inherit', cursor: 'pointer' }}
+                          onClick={() => deletePreset(p.name)}
+                        >✕</button>
                       </div>
                     ))}
-                    {(l.type === 'spot' || l.type === 'led') && (
-                      <>
-                        <p style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, marginTop: 12 }}>Rotación</p>
-                        {(['rotX', 'rotY'] as const).map(ax => (
-                          <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                            <span style={{ fontSize: 9, color: '#999', minWidth: 32 }}>{ax === 'rotX' ? 'TILT' : 'PAN'}</span>
-                            <input type="range" min={-180} max={180} step={1} value={l[ax]}
-                              onChange={e => updateLight(i, { [ax]: +e.target.value })} style={{ flex: 1 }} />
-                            {numInput(l[ax], -180, 180, 1, ax)}
-                          </div>
+                  </div>
+                </div>
+
+                {/* Master controls */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  <button
+                    style={lightsAllOff
+                      ? { flex: 1, background: '#ff3333', color: '#fff', border: '2px solid #ff3333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
+                      : { flex: 1, background: 'transparent', color: '#555', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                    }
+                    onClick={() => setLightsAllOff(v => !v)}
+                  >{lightsAllOff ? '🔴 OFF' : '⚡ ON'}</button>
+                  <button
+                    style={chaserActive
+                      ? { flex: 1, background: '#00FF85', color: '#000', border: '2px solid #00FF85', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
+                      : { flex: 1, background: 'transparent', color: '#555', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                    }
+                    onClick={() => setChaserActive(v => !v)}
+                  >⚡ CHASE</button>
+                </div>
+                {chaserActive && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                    <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', minWidth: 32 }}>BPM</span>
+                    <input type="range" min={30} max={300} step={1} value={chaserBpm}
+                      onChange={e => setChaserBpm(+e.target.value)} style={{ flex: 1 }} />
+                    <input type="number" min={30} max={300} value={chaserBpm}
+                      onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setChaserBpm(Math.max(30, Math.min(300, v))); }}
+                      style={{ width: 48, fontSize: 9, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '4px' }} />
+                  </div>
+                )}
+
+                {/* Light tabs */}
+                <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+                  {lights.map((l, i) => {
+                    const typeEmoji = l.type === 'spot' ? '🔦' : '💡';
+                    return (
+                      <button key={i}
+                        style={{ flex: 1, fontSize: 10, padding: '6px 4px', background: l.color, color: '#000', fontWeight: 'bold', border: activeLightTab === i ? '2px solid #fff' : '2px solid transparent', opacity: lightsAllOff ? 0.2 : Math.max(0.35, Math.min(1, l.intensity / 4)), cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                        onClick={() => setActiveLightTab(i)}
+                      >{typeEmoji} {l.name.split(' ')[1]}</button>
+                    );
+                  })}
+                </div>
+
+                {(() => {
+                  const l = lights[activeLightTab];
+                  if (!l) return null;
+                  const i = activeLightTab;
+                  const numInput = (val: number, min: number, max: number, step: number, key: string) => (
+                    <input type="number" min={min} max={max} step={step} value={val}
+                      onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) updateLight(i, { [key]: Math.max(min, Math.min(max, v)) }); }}
+                      style={{ width: 52, fontSize: 9, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '3px 4px' }}
+                    />
+                  );
+                  return (
+                    <div>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+                        {(['point', 'spot', 'led'] as LightType[]).map(t => (
+                          <button key={t}
+                            style={l.type === t
+                              ? { flex: 1, fontSize: 9, padding: '8px 4px', background: '#f5f5f5', color: '#000', border: '2px solid #f5f5f5', fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }
+                              : { flex: 1, fontSize: 9, padding: '8px 4px', background: 'transparent', color: '#666', border: '2px solid #333', cursor: 'pointer', fontFamily: 'inherit' }
+                            }
+                            onClick={() => switchLightType(i, t)}>
+                            {t === 'point' ? '💡 POINT' : t === 'spot' ? '🔦 SPOT' : '💡 LEDS'}
+                          </button>
                         ))}
-                      </>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                        <input type="color" value={l.color} onChange={e => updateLight(i, { color: e.target.value })}
+                          style={{ width: 40, height: 32, cursor: 'pointer', border: '2px solid #333', background: 'transparent' }} />
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Intensidad</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <input type="range" min={0} max={10} step={0.1} value={l.intensity}
+                              onChange={e => updateLight(i, { intensity: +e.target.value })} style={{ flex: 1 }} />
+                            {numInput(l.intensity, 0, 10, 0.1, 'intensity')}
+                          </div>
+                        </div>
+                      </div>
+                      {l.type === 'led' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                          <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', minWidth: 36 }}>LEDs</span>
+                          <input type="range" min={2} max={48} step={1} value={l.ledCount ?? 12}
+                            onChange={e => { updateLight(i, { ledCount: +e.target.value }); switchLightType(i, 'led'); }} style={{ flex: 1 }} />
+                          {numInput(l.ledCount ?? 12, 2, 48, 1, 'ledCount')}
+                        </div>
+                      )}
+                      <div style={{ marginBottom: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <div className={`toggle-switch ${l.strobe ? 'active' : ''}`} onClick={() => updateLight(i, { strobe: !l.strobe })} />
+                          <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase' }}>Strobe</span>
+                        </div>
+                        {l.strobe && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', minWidth: 24 }}>Hz</span>
+                            <input type="range" min={0.5} max={20} step={0.5} value={l.strobeHz ?? 3}
+                              onChange={e => updateLight(i, { strobeHz: +e.target.value })} style={{ flex: 1 }} />
+                            {numInput(l.strobeHz ?? 3, 0.5, 20, 0.5, 'strobeHz')}
+                          </div>
+                        )}
+                      </div>
+                      <p style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Posición XYZ</p>
+                      {(['x', 'y', 'z'] as const).map(ax => (
+                        <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 500, minWidth: 12, color: ax === 'x' ? '#f66' : ax === 'y' ? '#6f6' : '#66f' }}>{ax.toUpperCase()}</span>
+                          <input type="range" min={-2.5} max={2.5} step={0.02} value={l[ax]}
+                            onChange={e => updateLight(i, { [ax]: +e.target.value })} style={{ flex: 1 }} />
+                          {numInput(l[ax], -2.5, 2.5, 0.01, ax)}
+                        </div>
+                      ))}
+                      {(l.type === 'spot' || l.type === 'led') && (
+                        <>
+                          <p style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, marginTop: 12 }}>Rotación</p>
+                          {(['rotX', 'rotY'] as const).map(ax => (
+                            <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                              <span style={{ fontSize: 9, color: '#999', minWidth: 32 }}>{ax === 'rotX' ? 'TILT' : 'PAN'}</span>
+                              <input type="range" min={-180} max={180} step={1} value={l[ax]}
+                                onChange={e => updateLight(i, { [ax]: +e.target.value })} style={{ flex: 1 }} />
+                              {numInput(l[ax], -180, 180, 1, ax)}
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
 
-        {/* ESTRUCTURA */}
-        <div style={{ borderBottom: '1px solid #222' }}>
-          <button
-            style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showEstructuraPanel ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-            onClick={() => setShowEstructuraPanel(v => !v)}
-          >
-            <span>ESTRUCTURA</span>
-            <span>{showEstructuraPanel ? '▼' : '▶'}</span>
-          </button>
-          {showEstructuraPanel && (
-            <div style={{ padding: '0 16px 16px' }}>
-              <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
-                <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Estilo Rig</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    style={rigStyle === 'pipe'
-                      ? { flex: 1, background: '#f5f5f5', color: '#000', border: '2px solid #f5f5f5', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
-                      : { flex: 1, background: 'transparent', color: '#666', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                    }
-                    onClick={() => setRigStyle('pipe')}
-                  >⬜ PIPE</button>
-                  <button
-                    style={rigStyle === 'truss'
-                      ? { flex: 1, background: '#f5f5f5', color: '#000', border: '2px solid #f5f5f5', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
-                      : { flex: 1, background: 'transparent', color: '#666', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                    }
-                    onClick={() => setRigStyle('truss')}
-                  >▦ TRUSS</button>
+          {/* ESTRUCTURA */}
+          <div style={{ borderBottom: '1px solid #222' }}>
+            <button
+              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showEstructuraPanel ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+              onClick={() => setShowEstructuraPanel(v => !v)}
+            >
+              <span>ESTRUCTURA</span>
+              <span>{showEstructuraPanel ? '▼' : '▶'}</span>
+            </button>
+            {showEstructuraPanel && (
+              <div style={{ padding: '0 16px 16px' }}>
+                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #222' }}>
+                  <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Estilo Rig</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      style={rigStyle === 'pipe'
+                        ? { flex: 1, background: '#f5f5f5', color: '#000', border: '2px solid #f5f5f5', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
+                        : { flex: 1, background: 'transparent', color: '#666', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                      }
+                      onClick={() => setRigStyle('pipe')}
+                    >⬜ PIPE</button>
+                    <button
+                      style={rigStyle === 'truss'
+                        ? { flex: 1, background: '#f5f5f5', color: '#000', border: '2px solid #f5f5f5', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
+                        : { flex: 1, background: 'transparent', color: '#666', border: '2px solid #333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                      }
+                      onClick={() => setRigStyle('truss')}
+                    >▦ TRUSS</button>
+                  </div>
+                </div>
+                <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 12 }}>Dimensiones</label>
+                {(['w', 'h', 'd'] as const).map(dim => {
+                  const dimLabels: Record<string, string> = { w: 'Ancho (W)', h: 'Alto (H)', d: 'Profundidad (D)' };
+                  return (
+                    <div key={dim} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <label style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', minWidth: 88 }}>{dimLabels[dim]}</label>
+                      <input type="number" min={0.5} max={50} step={0.1} value={cubeDims[dim]}
+                        onChange={e => setCubeDims(prev => ({ ...prev, [dim]: Math.max(0.5, Math.min(50, +e.target.value || 0.5)) }))}
+                        style={{ flex: 1, fontSize: 10, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '4px 6px' }} />
+                      <span style={{ fontSize: 9, color: '#444' }}>m</span>
+                    </div>
+                  );
+                })}
+                <div style={{ marginTop: 4, textAlign: 'center', fontSize: 9, color: '#555', fontFamily: 'monospace' }}>
+                  {cubeDims.w.toFixed(1)} × {cubeDims.h.toFixed(1)} × {cubeDims.d.toFixed(1)} m
                 </div>
               </div>
-              <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 12 }}>Dimensiones</label>
-              {(['w', 'h', 'd'] as const).map(dim => {
-                const dimLabels: Record<string, string> = { w: 'Ancho (W)', h: 'Alto (H)', d: 'Profundidad (D)' };
-                return (
-                  <div key={dim} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <label style={{ fontSize: 9, color: '#666', textTransform: 'uppercase', minWidth: 88 }}>{dimLabels[dim]}</label>
-                    <input type="number" min={0.5} max={50} step={0.1} value={cubeDims[dim]}
-                      onChange={e => setCubeDims(prev => ({ ...prev, [dim]: Math.max(0.5, Math.min(50, +e.target.value || 0.5)) }))}
-                      style={{ flex: 1, fontSize: 10, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '4px 6px' }} />
-                    <span style={{ fontSize: 9, color: '#444' }}>m</span>
-                  </div>
-                );
-              })}
-              <div style={{ marginTop: 4, textAlign: 'center', fontSize: 9, color: '#555', fontFamily: 'monospace' }}>
-                {cubeDims.w.toFixed(1)} × {cubeDims.h.toFixed(1)} × {cubeDims.d.toFixed(1)} m
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* RESOLUCIÓN */}
-        <div style={{ borderBottom: '1px solid #222' }}>
-          <button
-            style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showResolucionPanel ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-            onClick={() => setShowResolucionPanel(v => !v)}
-          >
-            <span>RESOLUCIÓN</span>
-            <span>{showResolucionPanel ? '▼' : '▶'}</span>
-          </button>
-          {showResolucionPanel && (
-            <div style={{ padding: '0 16px 16px' }}>
-              <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 12 }}>Resolución por Cara</label>
-              {faces.map(face => (
-                <div key={face.id} style={{ marginBottom: 14 }}>
-                  <p style={{ fontSize: 9, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{face.name}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 9, color: '#444' }}>W:</span>
-                    <input type="number" min={64} max={2048} step={1} value={face.resolution.w}
-                      onChange={e => { const v = Math.max(64, Math.min(2048, parseInt(e.target.value) || 64)); updateFace(face.id, { resolution: { ...face.resolution, w: v } }); }}
-                      style={{ width: 60, fontSize: 9, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '3px 4px' }} />
-                    <span style={{ fontSize: 9, color: '#444' }}>×</span>
-                    <span style={{ fontSize: 9, color: '#444' }}>H:</span>
-                    <input type="number" min={64} max={2048} step={1} value={face.resolution.h}
-                      onChange={e => { const v = Math.max(64, Math.min(2048, parseInt(e.target.value) || 64)); updateFace(face.id, { resolution: { ...face.resolution, h: v } }); }}
-                      style={{ width: 60, fontSize: 9, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '3px 4px' }} />
+          {/* RESOLUCIÓN */}
+          <div style={{ borderBottom: '1px solid #222' }}>
+            <button
+              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showResolucionPanel ? '#f5f5f5' : '#666', fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+              onClick={() => setShowResolucionPanel(v => !v)}
+            >
+              <span>RESOLUCIÓN</span>
+              <span>{showResolucionPanel ? '▼' : '▶'}</span>
+            </button>
+            {showResolucionPanel && (
+              <div style={{ padding: '0 16px 16px' }}>
+                <label style={{ fontSize: 11, color: '#999', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 12 }}>Resolución por Cara</label>
+                {faces.map(face => (
+                  <div key={face.id} style={{ marginBottom: 14 }}>
+                    <p style={{ fontSize: 9, color: '#666', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{face.name}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 9, color: '#444' }}>W:</span>
+                      <input type="number" min={64} max={2048} step={1} value={face.resolution.w}
+                        onChange={e => { const v = Math.max(64, Math.min(2048, parseInt(e.target.value) || 64)); updateFace(face.id, { resolution: { ...face.resolution, w: v } }); }}
+                        style={{ width: 60, fontSize: 9, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '3px 4px' }} />
+                      <span style={{ fontSize: 9, color: '#444' }}>×</span>
+                      <span style={{ fontSize: 9, color: '#444' }}>H:</span>
+                      <input type="number" min={64} max={2048} step={1} value={face.resolution.h}
+                        onChange={e => { const v = Math.max(64, Math.min(2048, parseInt(e.target.value) || 64)); updateFace(face.id, { resolution: { ...face.resolution, h: v } }); }}
+                        style={{ width: 60, fontSize: 9, background: '#0a0a0a', border: '2px solid #333', color: '#00FF85', fontFamily: 'monospace', padding: '3px 4px' }} />
+                    </div>
                   </div>
+                ))}
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #222' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginBottom: 4 }}>
+                    <span style={{ color: '#555', textTransform: 'uppercase' }}>Total px</span>
+                    <span style={{ color: '#00FF85', fontFamily: 'monospace' }}>{totalPixels.toLocaleString()}</span>
+                  </div>
+                  <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', marginBottom: 4 }}>Res. entrada recomendada:</div>
+                  <div style={{ fontSize: 10, color: '#00FF85', fontFamily: 'monospace' }}>{recInputW} × {recInputH}</div>
                 </div>
-              ))}
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #222' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginBottom: 4 }}>
-                  <span style={{ color: '#555', textTransform: 'uppercase' }}>Total px</span>
-                  <span style={{ color: '#00FF85', fontFamily: 'monospace' }}>{totalPixels.toLocaleString()}</span>
-                </div>
-                <div style={{ fontSize: 9, color: '#555', textTransform: 'uppercase', marginBottom: 4 }}>Res. entrada recomendada:</div>
-                <div style={{ fontSize: 10, color: '#00FF85', fontFamily: 'monospace' }}>{recInputW} × {recInputH}</div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-      </div>{/* end right sidebar */}
+        </div>{/* end right sidebar */}
 
       </div>{/* end main row */}
 
@@ -1948,12 +1949,12 @@ export default function App() {
         <p style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>PRESETS DE ESCENA</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
           {([
-            { emoji: '🎤', title: 'Concierto', desc: 'Luces dinámicas y estrobos', scene: 'gradient' as SceneType, accent: '#ff0066' },
-            { emoji: '🎭', title: 'Teatro', desc: 'Iluminación teatral clásica', scene: 'white' as SceneType, accent: '#ffcc00' },
-            { emoji: '💃', title: 'Club', desc: 'Luces para pista de baile', scene: 'gradient' as SceneType, accent: '#00FF85' },
-            { emoji: '🎬', title: 'Cine', desc: 'Iluminación cinematográfica', scene: 'trailer' as SceneType, accent: '#0066ff' },
-            { emoji: '🎪', title: 'Evento', desc: 'Setup para eventos corporativos', scene: 'grid_img' as SceneType, accent: '#ff6600' },
-            { emoji: '🌈', title: 'Custom', desc: 'Crea tu propio preset', scene: null as SceneType | null, accent: '#888' },
+            { emoji: '🎥', title: 'Camara Virtual', desc: 'Luces dinámicas y estrobos', scene: 'camera' as SceneType, accent: '#ff0066' },
+            { emoji: '🗂️', title: 'Grid', desc: 'Setup para eventos corporativos', scene: 'grid_img' as SceneType, accent: '#ff6600' },
+            { emoji: '⬜', title: 'Blanco', desc: 'Iluminación teatral clásica', scene: 'white' as SceneType, accent: '#ffcc00' },
+            { emoji: '🖼️', title: 'Default', desc: 'Pre grabada', scene: 'trailer' as SceneType, accent: '#0066ff' },
+            { emoji: '🌈', title: 'Gradients', desc: 'Luces para pista de baile', scene: 'gradient' as SceneType, accent: '#00FF85' },
+            { emoji: '🤖', title: 'Preset', desc: 'Crea tu propio preset', scene: 'win98' as SceneType | null, accent: '#888' },
           ] as { emoji: string; title: string; desc: string; scene: SceneType | null; accent: string }[]).map((preset, idx) => (
             <button
               key={idx}
