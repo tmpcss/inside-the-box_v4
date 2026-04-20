@@ -1949,12 +1949,12 @@ export default function App() {
         <p style={{ fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>PRESETS DE ESCENA</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
           {([
+            { emoji: '🖼️', title: 'Default', desc: 'Pre grabada', scene: 'trailer' as SceneType, accent: '#0066ff' },
             { emoji: '🎥', title: 'Camara Virtual', desc: 'Luces dinámicas y estrobos', scene: 'camera' as SceneType, accent: '#ff0066' },
             { emoji: '🗂️', title: 'Grid', desc: 'Setup para eventos corporativos', scene: 'grid_img' as SceneType, accent: '#ff6600' },
-            { emoji: '⬜', title: 'Blanco', desc: 'Iluminación teatral clásica', scene: 'white' as SceneType, accent: '#ffcc00' },
-            { emoji: '🖼️', title: 'Default', desc: 'Pre grabada', scene: 'trailer' as SceneType, accent: '#0066ff' },
             { emoji: '🌈', title: 'Gradients', desc: 'Luces para pista de baile', scene: 'gradient' as SceneType, accent: '#00FF85' },
             { emoji: '🤖', title: 'Preset', desc: 'Crea tu propio preset', scene: 'win98' as SceneType | null, accent: '#888' },
+            { emoji: '⬜', title: 'Blanco', desc: 'Iluminación teatral clásica', scene: 'white' as SceneType, accent: '#ffcc00' },
           ] as { emoji: string; title: string; desc: string; scene: SceneType | null; accent: string }[]).map((preset, idx) => (
             <button
               key={idx}
