@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 // MADE BYtomi
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -241,19 +242,22 @@ function buildColumnsRig(group: THREE.Group, HW: number, HH: number, HD: number,
   const plateMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.9, roughness: 0.3 });
   const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
+  // Full half-height = screen edge (HH is inset by 0.15 for rig clearance, screens sit at HH+0.15)
+  const FH = HH + 0.15;
+
   // 4 vertical truss towers — one at each corner
   const corners: [number, number][] = [[-HW, -HD], [HW, -HD], [HW, HD], [-HW, HD]];
   corners.forEach(([cx, cz]) => {
-    makeTrussSegment(group, V(cx, -HH, cz), V(cx, HH, cz), 0.07, 0x111111);
+    makeTrussSegment(group, V(cx, -FH, cz), V(cx, FH, cz), 0.07, 0x111111);
 
     // Base plate
     const bp = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.025, 0.30), plateMat);
-    bp.position.set(cx, -HH - 0.013, cz);
+    bp.position.set(cx, -FH - 0.013, cz);
     group.add(bp);
 
     // Top plate
     const tp = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.020, 0.26), plateMat);
-    tp.position.set(cx, HH + 0.010, cz);
+    tp.position.set(cx, FH + 0.010, cz);
     group.add(tp);
   });
 }
@@ -368,6 +372,35 @@ function buildTrussRig(group: THREE.Group, HW: number, HH: number, HD: number, F
     group.add(m);
     makeTrussSegment(group, c, V(c.x, -HH, c.z), 0.07);
   });
+}
+
+// ─── LED strip factory (used at init and in switchLightType) ─────────────────
+function createLedStripGroup(
+  cfg: LightConfig,
+  cd: { w: number; h: number; d: number },
+  nLed = 12
+): THREE.Group {
+  const stripLen = cd.h * 0.92;
+  const group = new THREE.Group();
+  group.position.set(cfg.x, cfg.y, cfg.z);
+
+  const tubeMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.7, roughness: 0.3 });
+  group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, stripLen, 8), tubeMat));
+
+  const ledGeo = new THREE.SphereGeometry(0.028, 8, 8);
+  const count = cfg.ledCount ?? nLed;
+  for (let k = 0; k < count; k++) {
+    const yOff = (k / Math.max(1, count - 1) - 0.5) * stripLen;
+    const ledMesh = new THREE.Mesh(ledGeo, new THREE.MeshBasicMaterial({ color: cfg.color, toneMapped: false }));
+    ledMesh.position.set(0, yOff, 0);
+    group.add(ledMesh);
+    if (k % 3 === 0) {
+      const lgt = new THREE.PointLight(cfg.color, cfg.intensity * 0.3, 4);
+      lgt.position.set(0, yOff, 0);
+      group.add(lgt);
+    }
+  }
+  return group;
 }
 
 // ─── Texture draw helpers (module-level, pure — no React deps) ──────────────
@@ -610,6 +643,13 @@ export default function App() {
   const rigGroupRef = useRef<THREE.Group | null>(null);
   const peopleGroupRef = useRef<THREE.Group | null>(null);
 
+  // TransformControls + selection
+  const transformControlsRef = useRef<TransformControls | null>(null);
+  const tcDraggingRef = useRef(false);
+  const activeLightTabRef = useRef(0);
+  const selectionRingRef = useRef<THREE.Mesh | null>(null);
+  const showLightHelpersRef = useRef(true);
+
   // Lights
   const lightObjsRef = useRef<LightObjects[]>([]);
 
@@ -640,8 +680,9 @@ export default function App() {
   const [showEstructuraPanel, setShowEstructuraPanel] = useState(false);
   const [showResolucionPanel, setShowResolucionPanel] = useState(false);
   const [cubeDims, setCubeDims] = useState({ w: 3.6, h: 3.6, d: 3.6 });
-  const [rigStyle, setRigStyle] = useState<'pipe' | 'truss' | 'columns'>('truss');
+  const [rigStyle, setRigStyle] = useState<'pipe' | 'truss' | 'columns'>('columns');
   const [showPeople, setShowPeople] = useState(false);
+  const [showLightHelpers, setShowLightHelpers] = useState(true);
 
   const [activeLightTab, setActiveLightTab] = useState(0);
   const [chaserActive, setChaserActive] = useState(false);
@@ -680,10 +721,10 @@ export default function App() {
   });
 
   const [lights, setLights] = useState<LightConfig[]>([
-    { id: 0, name: 'Light A', color: C.variantAccent, intensity: 2, strobe: false, strobeHz: 3, type: 'spot', x: -0.5, y: 0.3, z: 0.5, rotX: -20, rotY: 180, rotZ: 0, ledCount: 12 },
-    { id: 1, name: 'Light B', color: '#00ff85', intensity: 2, strobe: false, strobeHz: 3, type: 'spot', x: 0.5, y: 0.3, z: 0.5, rotX: -20, rotY: 90, rotZ: 0, ledCount: 12 },
-    { id: 2, name: 'Light C', color: '#0066ff', intensity: 2, strobe: false, strobeHz: 3, type: 'spot', x: 0.5, y: 0.3, z: -0.5, rotX: -20, rotY: 0, rotZ: 0, ledCount: 12 },
-    { id: 3, name: 'Light D', color: '#ffffff', intensity: 1.5, strobe: false, strobeHz: 3, type: 'spot', x: -0.5, y: 0.3, z: -0.5, rotX: -20, rotY: 270, rotZ: 0, ledCount: 12 },
+    { id: 0, name: 'LED A', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: -1.70, y: 0, z:  1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12 },
+    { id: 1, name: 'LED B', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x:  1.70, y: 0, z:  1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12 },
+    { id: 2, name: 'LED C', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x:  1.70, y: 0, z: -1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12 },
+    { id: 3, name: 'LED D', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: -1.70, y: 0, z: -1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12 },
   ]);
 
   // Keep refs in sync
@@ -751,6 +792,8 @@ export default function App() {
   useEffect(() => { cubeDimsRef.current = cubeDims; }, [cubeDims]);
   useEffect(() => { offFaceOpacityRef.current = offFaceOpacity; }, [offFaceOpacity]);
   useEffect(() => { lightsAllOffRef.current = lightsAllOff; }, [lightsAllOff]);
+  useEffect(() => { activeLightTabRef.current = activeLightTab; }, [activeLightTab]);
+  useEffect(() => { showLightHelpersRef.current = showLightHelpers; }, [showLightHelpers]);
 
   // ─── Preview thumbnails + mapping composite rAF loop ─────────────────────
   useEffect(() => {
@@ -972,17 +1015,30 @@ export default function App() {
         const spotHelper = new THREE.SpotLightHelper(spot);
         scene.add(spotHelper);
         lightObjsRef.current.push({ threeLight: spot, helperMesh: hMesh, helperMat: hMat, spotHelper });
+      } else if (cfg.type === 'led') {
+        hMesh.visible = false;
+        const ledGroup = createLedStripGroup(cfg, cubeDimsRef.current);
+        scene.add(ledGroup);
+        const pt = new THREE.PointLight(cfg.color, cfg.intensity * 0.5, 10);
+        pt.position.set(cfg.x, cfg.y, cfg.z);
+        scene.add(pt);
+        lightObjsRef.current.push({ threeLight: pt, helperMesh: hMesh, helperMat: hMat, ledGroup });
       } else {
         const light = new THREE.PointLight(new THREE.Color(cfg.color).getHex(), cfg.intensity, 8);
         light.position.set(cfg.x, cfg.y, cfg.z);
         light.castShadow = true;
         scene.add(light);
+        hMesh.visible = true;
         lightObjsRef.current.push({ threeLight: light, helperMesh: hMesh, helperMat: hMat });
       }
       void idx;
     });
 
-    scene.add(new THREE.AmbientLight(0x222222));
+    // Ambient + hemisphere from above for better environment visibility
+    scene.add(new THREE.AmbientLight(0x303040, 1.8));
+    const hemi = new THREE.HemisphereLight(0x8899bb, 0x223344, 1.0);
+    hemi.position.set(0, 20, 0);
+    scene.add(hemi);
 
     // ── Animation Loop ───────────────────────────────────────────────────────
     const animate = () => {
@@ -1067,19 +1123,23 @@ export default function App() {
           });
         }
 
-        // Mix: white (full projection) → tinted toward light color as intensity grows.
-        // This simulates interior light bleeding through the projected screen fabric.
+        // Backlit-fabric effect: interior LEDs bleed through the projection screen.
+        // Increase emissiveIntensity so the face is brighter from BOTH sides,
+        // and tint emissive toward the light color.
         const lightPow = Math.sqrt(lr * lr + lg * lg + lb * lb);
         let er = 1, eg = 1, eb = 1;
         if (lightPow > 0.02) {
           const nr = lr / lightPow, ng = lg / lightPow, nb = lb / lightPow;
-          const blend = Math.min(0.98, lightPow * 0.5);
+          // Tint the face toward the light hue
+          const blend = Math.min(0.92, lightPow * 0.45);
           er = 1 - blend + nr * blend;
           eg = 1 - blend + ng * blend;
           eb = 1 - blend + nb * blend;
         }
         mat.emissive.setRGB(er, eg, eb);
-        mat.emissiveIntensity = offFaceOpacityRef.current;
+        // Boost emissiveIntensity proportionally to light power — visible from exterior too
+        const bleedBoost = Math.min(2.0, lightPow * 0.55);
+        mat.emissiveIntensity = offFaceOpacityRef.current * (1 + bleedBoost);
 
         // Skip canvas redraw for active camera (uses VideoTexture directly)
         if (face.scene === 'camera' && cameraActive) return;
@@ -1109,14 +1169,26 @@ export default function App() {
       });
 
       // Update lights
+      const tcActive = tcDraggingRef.current;
+      const tcIdx = activeLightTabRef.current;
       lightsRef.current.forEach((cfg, i) => {
         const lo = lightObjsRef.current[i];
         if (!lo) return;
         const { threeLight, helperMesh, helperMat } = lo;
 
-        threeLight.position.set(cfg.x, cfg.y, cfg.z);
-        helperMesh.position.set(cfg.x, cfg.y, cfg.z);
+        const isDraggingThis = tcActive && i === tcIdx;
+        if (!isDraggingThis) {
+          threeLight.position.set(cfg.x, cfg.y, cfg.z);
+          helperMesh.position.set(cfg.x, cfg.y, cfg.z);
+        } else {
+          // TC is controlling helperMesh — sync threeLight to follow
+          threeLight.position.copy(helperMesh.position);
+        }
         threeLight.color.set(cfg.color);
+
+        // Visibility: helper sphere hidden for LED; toggled by showLightHelpers
+        const isLed = cfg.type === 'led';
+        helperMesh.visible = !isLed && showLightHelpersRef.current;
 
         // Global blackout override
         if (lightsAllOffRef.current) {
@@ -1164,6 +1236,7 @@ export default function App() {
           threeLight.distance = wallDist + 0.1;
 
           if (lo.spotHelper) {
+            lo.spotHelper.visible = showLightHelpersRef.current;
             lo.spotHelper.color = new THREE.Color(cfg.color);
             lo.spotHelper.update();
           }
@@ -1171,8 +1244,10 @@ export default function App() {
 
         // LED group transform + strobe
         if (lo.ledGroup) {
-          lo.ledGroup.position.set(cfg.x, cfg.y, cfg.z);
+          const lp = isDraggingThis ? helperMesh.position : new THREE.Vector3(cfg.x, cfg.y, cfg.z);
+          lo.ledGroup.position.copy(lp);
           lo.ledGroup.rotation.set((cfg.rotX * Math.PI) / 180, 0, ((cfg.rotZ ?? 0) * Math.PI) / 180);
+          lo.ledGroup.visible = showLightHelpersRef.current;
           const lInt = cfg.strobe ? (Math.sin(time * 18) > 0 ? cfg.intensity * 0.4 : 0) : cfg.intensity * 0.25;
           lo.ledGroup.children.forEach(child => {
             if (child instanceof THREE.PointLight) child.intensity = lInt;
@@ -1184,60 +1259,76 @@ export default function App() {
         }
       });
 
+      // Selection ring follows active light
+      const selRing = selectionRingRef.current;
+      if (selRing) {
+        const activeLo = lightObjsRef.current[activeLightTabRef.current];
+        if (activeLo) {
+          selRing.position.copy(activeLo.helperMesh.position);
+          selRing.scale.setScalar(1 + Math.sin(time * 5) * 0.07);
+          selRing.visible = showLightHelpersRef.current;
+        } else {
+          selRing.visible = false;
+        }
+      }
+
       renderer.render(scene, cam);
     };
     animate();
 
-    // ── Light drag gizmos ────────────────────────────────────────────────────
-    const dragRaycaster = new THREE.Raycaster();
-    const dragPlaneHit = new THREE.Vector3();
-    let activeLightDrag: { idx: number; plane: THREE.Plane } | null = null;
+    // ── TransformControls for light positioning ──────────────────────────────
+    const tc = new TransformControls(cam, cvs);
+    tc.setMode('translate');
+    tc.setSize(0.75);
+    scene.add(tc as unknown as THREE.Object3D);
+    transformControlsRef.current = tc;
 
-    const getNDC = (e: PointerEvent) => {
+    tc.addEventListener('dragging-changed', (event: any) => {
+      controls.enabled = !event.value;
+      tcDraggingRef.current = event.value;
+      if (!event.value) {
+        // Drag ended — persist final position to React state
+        const idx = activeLightTabRef.current;
+        const lo = lightObjsRef.current[idx];
+        if (lo) {
+          const p = lo.helperMesh.position;
+          setLights(prev => prev.map((l, i) => i === idx
+            ? { ...l, x: +p.x.toFixed(3), y: +p.y.toFixed(3), z: +p.z.toFixed(3) }
+            : l
+          ));
+        }
+      }
+    });
+
+    // Attach TC to first light on init
+    if (lightObjsRef.current[0]) tc.attach(lightObjsRef.current[0].helperMesh);
+
+    // Selection ring (shows active light)
+    const selRing = new THREE.Mesh(
+      new THREE.SphereGeometry(0.20, 16, 8),
+      new THREE.MeshBasicMaterial({ color: 0x4a8cff, wireframe: true, transparent: true, opacity: 0.7 })
+    );
+    scene.add(selRing);
+    selectionRingRef.current = selRing;
+
+    // Click on helper sphere to select light
+    const clickRaycaster = new THREE.Raycaster();
+    const onCanvasPointerUp = (e: PointerEvent) => {
+      if (tcDraggingRef.current) return;
       const rect = cvs.getBoundingClientRect();
-      return new THREE.Vector2(
+      const ndc = new THREE.Vector2(
         ((e.clientX - rect.left) / rect.width) * 2 - 1,
         -((e.clientY - rect.top) / rect.height) * 2 + 1
       );
-    };
-
-    const onLightDown = (e: PointerEvent) => {
-      if (e.button !== 0) return;
-      dragRaycaster.setFromCamera(getNDC(e), cam);
+      clickRaycaster.setFromCamera(ndc, cam);
       const helpers = lightObjsRef.current.map(lo => lo.helperMesh);
-      const hits = dragRaycaster.intersectObjects(helpers);
-      if (!hits.length) return;
-      const hitIdx = lightObjsRef.current.findIndex(lo => lo.helperMesh === hits[0].object);
-      if (hitIdx < 0) return;
-      const cfg = lightsRef.current[hitIdx];
-      activeLightDrag = { idx: hitIdx, plane: new THREE.Plane(new THREE.Vector3(0, 1, 0), -cfg.y) };
-      controls.enabled = false;
-      cvs.style.cursor = 'grabbing';
-      e.stopPropagation();
-    };
-
-    const onLightMove = (e: PointerEvent) => {
-      if (!activeLightDrag) return;
-      dragRaycaster.setFromCamera(getNDC(e), cam);
-      if (dragRaycaster.ray.intersectPlane(activeLightDrag.plane, dragPlaneHit)) {
-        const idx = activeLightDrag.idx;
-        setLights(prev => prev.map((l, i) => i === idx
-          ? { ...l, x: +dragPlaneHit.x.toFixed(3), z: +dragPlaneHit.z.toFixed(3) }
-          : l
-        ));
+      const hits = clickRaycaster.intersectObjects(helpers);
+      if (hits.length) {
+        const hitIdx = lightObjsRef.current.findIndex(lo => lo.helperMesh === hits[0].object);
+        if (hitIdx >= 0) setActiveLightTab(hitIdx);
       }
     };
-
-    const onLightUp = () => {
-      if (!activeLightDrag) return;
-      controls.enabled = true;
-      activeLightDrag = null;
-      cvs.style.cursor = '';
-    };
-
-    cvs.addEventListener('pointerdown', onLightDown);
-    window.addEventListener('pointermove', onLightMove);
-    window.addEventListener('pointerup', onLightUp);
+    cvs.addEventListener('pointerup', onCanvasPointerUp);
 
     // Resize
     const onResize = () => {
@@ -1251,9 +1342,8 @@ export default function App() {
 
     return () => {
       window.removeEventListener('resize', onResize);
-      cvs.removeEventListener('pointerdown', onLightDown);
-      window.removeEventListener('pointermove', onLightMove);
-      window.removeEventListener('pointerup', onLightUp);
+      cvs.removeEventListener('pointerup', onCanvasPointerUp);
+      tc.dispose();
       cancelAnimationFrame(animIdRef.current);
       controls.dispose();
       renderer.dispose();
@@ -1301,6 +1391,14 @@ export default function App() {
     scene.add(group);
     peopleGroupRef.current = group;
   }, [cubeDims, showPeople]); // eslint-disable-line
+
+  // ─── Attach TransformControls to selected light ───────────────────────────
+  useEffect(() => {
+    const tc = transformControlsRef.current;
+    if (!tc) return;
+    const lo = lightObjsRef.current[activeLightTab];
+    if (lo) tc.attach(lo.helperMesh);
+  }, [activeLightTab]);
 
   // ─── Update face materials when scene/camera changes ─────────────────────
   useEffect(() => {
@@ -1529,9 +1627,8 @@ export default function App() {
       scene3.add(newSpotHelper);
 
     } else if (type === 'led') {
-      // Vertical LED strip on inner truss chord
       const cd = cubeDimsRef.current;
-      const HW = cd.w / 2, HH = cd.h / 2, HD = cd.d / 2; void HH;
+      const HW = cd.w / 2, HD = cd.d / 2;
       const th = 0.10;
       const edgePositions: [number, number, number][] = [
         [-HW + th, 0, HD - th],
@@ -1540,41 +1637,17 @@ export default function App() {
         [-HW + th, 0, -HD + th],
       ];
       const [ex, , ez] = edgePositions[index % 4];
-
-      const group = new THREE.Group();
-      group.position.set(ex, 0, ez);
-      const stripLen = cd.h * 0.92;
-      const nLedStrip = cfg.ledCount ?? nLed;
-
-      // Tube body (vertical)
-      const tbGeo = new THREE.CylinderGeometry(0.018, 0.018, stripLen, 8);
-      group.add(new THREE.Mesh(tbGeo, new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.7, roughness: 0.3 })));
-
-      // LED spheres + lights (vertical, along Y)
-      const ledGeo = new THREE.SphereGeometry(0.028, 8, 8);
-      for (let k = 0; k < nLedStrip; k++) {
-        const yOff = (k / Math.max(1, nLedStrip - 1) - 0.5) * stripLen;
-        const ledMat = new THREE.MeshBasicMaterial({ color: cfg.color, toneMapped: false });
-        const ledMesh = new THREE.Mesh(ledGeo, ledMat);
-        ledMesh.position.set(0, yOff, 0);
-        group.add(ledMesh);
-        if (k % 3 === 0) {
-          const lgt = new THREE.PointLight(cfg.color, cfg.intensity * 0.3, 4);
-          lgt.position.set(0, yOff, 0);
-          group.add(lgt);
-        }
-      }
+      const ledCfg = { ...cfg, x: ex, y: 0, z: ez };
+      const group = createLedStripGroup(ledCfg, cd, nLed);
       scene3.add(group);
       newLedGroup = group;
-      lo.helperMesh.visible = true;
+      lo.helperMesh.visible = false;
 
-      // Fill point light at strip center
       const pt = new THREE.PointLight(cfg.color, cfg.intensity * 0.5, 10);
       pt.position.set(ex, 0, ez);
       scene3.add(pt);
       newLight = pt;
 
-      // Update state position to edge
       setLights(prev => prev.map((l, li) => li === index ? { ...l, type, x: ex, y: 0, z: ez } : l));
       lightObjsRef.current[index] = { threeLight: newLight, helperMesh: lo.helperMesh, helperMat: lo.helperMat, ledGroup: newLedGroup };
       return;
@@ -1896,7 +1969,7 @@ export default function App() {
                 </div>
 
                 {/* Master controls */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                   <button
                     style={lightsAllOff
                       ? { flex: 1, background: '#ff3333', color: C.white, border: '2px solid #ff3333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
@@ -1911,6 +1984,15 @@ export default function App() {
                     }
                     onClick={() => setChaserActive(v => !v)}
                   >⚡ CHASE</button>
+                </div>
+                <div style={{ marginBottom: 16 }}>
+                  <button
+                    style={!showLightHelpers
+                      ? { width: '100%', background: 'transparent', color: C.accent, border: `2px solid ${C.accent}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 600 }
+                      : { width: '100%', background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                    }
+                    onClick={() => setShowLightHelpers(v => !v)}
+                  >{showLightHelpers ? '👁️ OCULTAR LUCES 3D' : '👁️ MOSTRAR LUCES 3D'}</button>
                 </div>
                 {chaserActive && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
