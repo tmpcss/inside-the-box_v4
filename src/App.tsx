@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
+import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 // MADE BYtomi
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type SceneType = 'camera' | 'trailer' | 'fileinput' | 'grid_img' | 'gradient' | 'win98' | 'white';
+type SceneType = 'camera' | 'trailer' | 'fileinput' | 'grid_img' | 'gradient' | 'win98' | 'white' | 'vote';
 type LightType = 'point' | 'spot' | 'led';
 
 interface FaceConfig {
@@ -38,6 +39,7 @@ interface LightConfig {
   rotY: number; // degrees
   rotZ?: number; // degrees
   ledCount?: number;
+  spotDistance?: number;
 }
 
 interface LightObjects {
@@ -598,6 +600,217 @@ function drawWhite(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, par
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    const test = cur ? cur + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && cur) { lines.push(cur); cur = w; } else cur = test;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+function drawVote(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, params?: any) {
+  const phrase = params?.phrase ?? '¿Siguiente escena?';
+  const optA = params?.optA ?? 'Win 98';
+  const optB = params?.optB ?? 'Gradient';
+  const style = params?.voteStyle ?? 0;
+  const W = canvas.width, H = canvas.height;
+  const S = W / 1080;
+
+  if (style === 0) {
+    // ── Minimal Dark ──────────────────────────────────────────────────────────
+    ctx.fillStyle = '#07070d'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(74,140,255,0.055)';
+    const step = Math.round(W / 22);
+    for (let gx = step; gx < W; gx += step)
+      for (let gy = step; gy < H; gy += step) { ctx.beginPath(); ctx.arc(gx, gy, 1.5, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(74,140,255,0.45)';
+    ctx.font = `${Math.round(16 * S)}px "Courier New",monospace`; ctx.textAlign = 'center';
+    ctx.fillText('— VOTE —', W / 2, H * 0.10);
+    ctx.strokeStyle = 'rgba(74,140,255,0.18)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W * 0.1, H * 0.15); ctx.lineTo(W * 0.9, H * 0.15); ctx.stroke();
+    const ps = Math.round(Math.min(62 * S, H * 0.068));
+    ctx.font = `${ps}px Arial,sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.93)'; ctx.textAlign = 'center';
+    const pl = wrapText(ctx, phrase, W * 0.82); const plh = ps * 1.3;
+    let py = H * 0.42 - (pl.length * plh) / 2 + ps * 0.4;
+    pl.forEach(l => { ctx.fillText(l, W / 2, py); py += plh; });
+    const bY = H * 0.60, bH2 = H * 0.28, bW = W * 0.36, gap = W * 0.08;
+    const drawC0 = (bx: number, txt: string) => {
+      ctx.fillStyle = 'rgba(74,140,255,0.05)'; ctx.fillRect(bx, bY, bW, bH2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.09)'; ctx.lineWidth = 1; ctx.strokeRect(bx, bY, bW, bH2);
+      ctx.strokeStyle = 'rgba(74,140,255,0.45)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(bx, bY); ctx.lineTo(bx + bW, bY); ctx.stroke();
+      const os = Math.round(Math.min(38 * S, bW * 0.21));
+      ctx.font = `bold ${os}px Arial,sans-serif`; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      const ol = wrapText(ctx, txt, bW * 0.84); let oy = bY + bH2 * 0.5 + os * 0.35;
+      ol.forEach(t => { ctx.fillText(t, bx + bW / 2, oy); oy += os * 1.2; });
+    };
+    drawC0(W / 2 - bW - gap / 2, optA); drawC0(W / 2 + gap / 2, optB);
+    ctx.strokeStyle = 'rgba(74,140,255,0.12)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W * 0.1, H * 0.93); ctx.lineTo(W * 0.9, H * 0.93); ctx.stroke();
+
+  } else if (style === 1) {
+    // ── Split Screen ──────────────────────────────────────────────────────────
+    ctx.fillStyle = '#06060f'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#0a0a28'; ctx.fillRect(0, 0, W / 2, H);
+    ctx.fillStyle = '#14060d'; ctx.fillRect(W / 2, 0, W / 2, H);
+    ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+    // Phrase banner
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H * 0.22);
+    const ps2 = Math.round(Math.min(54 * S, H * 0.057));
+    ctx.font = `${ps2}px Arial,sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.textAlign = 'center';
+    const pl2 = wrapText(ctx, phrase, W * 0.86); let py2 = H * 0.12;
+    pl2.forEach(l => { ctx.fillText(l, W / 2, py2); py2 += ps2 * 1.3; });
+    // Option A
+    ctx.fillStyle = 'rgba(100,150,255,0.07)'; ctx.fillRect(0, H * 0.22, W / 2, H * 0.78);
+    const os2 = Math.round(Math.min(52 * S, W * 0.060));
+    ctx.font = `bold ${os2}px Arial,sans-serif`; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    const olA = wrapText(ctx, optA, W * 0.44); let oYA = H * 0.56;
+    olA.forEach(t => { ctx.fillText(t, W / 4, oYA); oYA += os2 * 1.15; });
+    // Option B
+    ctx.fillStyle = 'rgba(255,80,180,0.06)'; ctx.fillRect(W / 2, H * 0.22, W / 2, H * 0.78);
+    ctx.font = `bold ${os2}px Arial,sans-serif`; ctx.fillStyle = '#fff';
+    const olB = wrapText(ctx, optB, W * 0.44); let oYB = H * 0.56;
+    olB.forEach(t => { ctx.fillText(t, W * 3 / 4, oYB); oYB += os2 * 1.15; });
+
+  } else if (style === 2) {
+    // ── Circular ──────────────────────────────────────────────────────────────
+    ctx.fillStyle = '#05050a'; ctx.fillRect(0, 0, W, H);
+    const glow = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.7);
+    glow.addColorStop(0, 'rgba(74,140,255,0.04)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+    const ps3 = Math.round(Math.min(58 * S, H * 0.063));
+    ctx.font = `${ps3}px Arial,sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.90)'; ctx.textAlign = 'center';
+    const pl3 = wrapText(ctx, phrase, W * 0.80); let py3 = H * 0.18;
+    pl3.forEach(l => { ctx.fillText(l, W / 2, py3); py3 += ps3 * 1.35; });
+    ctx.strokeStyle = 'rgba(74,140,255,0.18)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W * 0.2, H * 0.35); ctx.lineTo(W * 0.8, H * 0.35); ctx.stroke();
+    const R = Math.min(W * 0.20, H * 0.22);
+    const cY = H * 0.64;
+    const drawCirc = (cx: number, txt: string, col: string) => {
+      ctx.strokeStyle = col + '99'; ctx.lineWidth = 1.5 * S;
+      ctx.beginPath(); ctx.arc(cx, cY, R + 7 * S, 0, Math.PI * 2); ctx.stroke();
+      const cg = ctx.createRadialGradient(cx, cY, 0, cx, cY, R);
+      cg.addColorStop(0, col + '15'); cg.addColorStop(1, col + '04');
+      ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cY, R, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = col + '44'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx, cY, R, 0, Math.PI * 2); ctx.stroke();
+      const os3 = Math.round(Math.min(36 * S, R * 0.40));
+      ctx.font = `bold ${os3}px Arial,sans-serif`; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      const ol = wrapText(ctx, txt, R * 1.65); let oy = cY - (ol.length - 1) * os3 * 0.6;
+      ol.forEach(t => { ctx.fillText(t, cx, oy); oy += os3 * 1.2; });
+    };
+    drawCirc(W * 0.30, optA, '#4a8cff');
+    drawCirc(W * 0.70, optB, '#c060ff');
+    ctx.fillStyle = 'rgba(74,140,255,0.30)'; ctx.font = `${Math.round(12 * S)}px "Courier New",monospace`; ctx.textAlign = 'center';
+    ctx.fillText('selecciona tu opción', W / 2, H * 0.93);
+
+  } else {
+    // ── Bold Typography ───────────────────────────────────────────────────────
+    ctx.fillStyle = '#060609'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#4a8cff'; ctx.fillRect(0, 0, W, 3 * S);
+    const ps4 = Math.round(Math.min(92 * S, H * 0.098));
+    ctx.font = `bold ${ps4}px Arial,sans-serif`; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+    const pl4 = wrapText(ctx, phrase, W * 0.90); const plh4 = ps4 * 1.14;
+    let py4 = H * 0.24 - (pl4.length * plh4) / 2 + ps4 * 0.4;
+    pl4.forEach(l => { ctx.fillText(l, W / 2, py4); py4 += plh4; });
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 2 * S;
+    ctx.beginPath(); ctx.moveTo(0, H * 0.52); ctx.lineTo(W, H * 0.52); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W / 2, H * 0.54); ctx.lineTo(W / 2, H * 0.94); ctx.stroke();
+    const os4 = Math.round(Math.min(74 * S, W * 0.085));
+    const drawBold = (side: 'left' | 'right', txt: string) => {
+      const cx = side === 'left' ? W * 0.26 : W * 0.74;
+      ctx.font = `bold ${os4}px Arial,sans-serif`; ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+      const ol = wrapText(ctx, txt, W * 0.44); let oy = H * 0.70;
+      ol.forEach(t => { ctx.fillText(t, cx, oy); oy += os4 * 1.14; });
+    };
+    drawBold('left', optA); drawBold('right', optB);
+    ctx.fillStyle = '#4a8cff'; ctx.fillRect(0, H - 3 * S, W, 3 * S);
+  }
+}
+
+function drawVoteFaceOverlay(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, params?: any) {
+  const W = canvas.width, H = canvas.height;
+  const phrase = params?.phrase ?? '¿Siguiente escena?';
+  const optA = params?.optA ?? 'Win 98';
+  const optB = params?.optB ?? 'Gradient';
+
+  // Box is 55% of canvas, centered
+  const bW = W * 0.55, bH = H * 0.55;
+  const oX = (W - bW) / 2, oY = (H - bH) / 2;
+  const S = bW / 280;
+
+  ctx.fillStyle = 'rgba(0,0,8,0.72)';
+  ctx.fillRect(oX, oY, bW, bH);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.016)';
+  const step = Math.max(10, Math.round(bW / 18));
+  for (let gx = oX + step; gx < oX + bW; gx += step)
+    for (let gy = oY + step; gy < oY + bH; gy += step) { ctx.beginPath(); ctx.arc(gx, gy, 0.8, 0, Math.PI * 2); ctx.fill(); }
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(oX, oY, bW, bH);
+  ctx.strokeStyle = 'rgba(74,140,255,0.55)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(oX, oY + 1); ctx.lineTo(oX + bW, oY + 1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(oX, oY + bH - 1); ctx.lineTo(oX + bW, oY + bH - 1); ctx.stroke();
+
+  // Phrase (no label above)
+  const ps = Math.round(Math.min(28 * S, bH * 0.12));
+  ctx.font = `${ps}px Arial,sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.textAlign = 'center';
+  const lines = wrapText(ctx, phrase, bW * 0.84);
+  const lh = ps * 1.28;
+  let py = oY + bH * 0.32 - (lines.length * lh) / 2 + ps * 0.4;
+  lines.forEach(l => { ctx.fillText(l, oX + bW / 2, py); py += lh; });
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(oX + bW * 0.10, oY + bH * 0.52); ctx.lineTo(oX + bW * 0.90, oY + bH * 0.52); ctx.stroke();
+
+  const optBtnW = bW * 0.38, optBtnH = bH * 0.26, gap = bW * 0.06, optBtnY = oY + bH * 0.60;
+  const drawOpt = (bx: number, txt: string) => {
+    ctx.fillStyle = 'rgba(74,140,255,0.08)';
+    ctx.fillRect(bx, optBtnY, optBtnW, optBtnH);
+    ctx.strokeStyle = 'rgba(74,140,255,0.38)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx, optBtnY, optBtnW, optBtnH);
+    ctx.strokeStyle = 'rgba(74,140,255,0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(bx, optBtnY); ctx.lineTo(bx + optBtnW, optBtnY); ctx.stroke();
+    const os = Math.round(Math.min(19 * S, optBtnW * 0.22));
+    ctx.font = `bold ${os}px Arial,sans-serif`;
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    const ol = wrapText(ctx, txt, optBtnW * 0.84);
+    let oy = optBtnY + optBtnH * 0.5 + os * 0.35;
+    ol.forEach(t => { ctx.fillText(t, bx + optBtnW / 2, oy); oy += os * 1.2; });
+  };
+  drawOpt(oX + bW / 2 - optBtnW - gap / 2, optA);
+  drawOpt(oX + bW / 2 + gap / 2, optB);
+}
+
+function drawCountdownFaceOverlay(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, fmt: string) {
+  const W = canvas.width;
+  // No background box — just text floating near the top
+  // Canvas is 512px; "50px from top" → offset the text baseline ~50+fontSize pixels
+  const ts = Math.round(W * 0.062); // ~32px on 512 canvas — half of original ~62px
+  ctx.font = `100 ${ts}px "Courier New",monospace`;
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 8;
+  ctx.fillText(fmt, W / 2, 50 + ts);
+  ctx.shadowBlur = 0;
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   // Three.js refs
@@ -643,6 +856,9 @@ export default function App() {
   // Per-face bleed overlay (shows interior light projection patterns from both sides)
   const bleedFaceRef = useRef<{ canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; tex: THREE.CanvasTexture; mesh: THREE.Mesh }[]>([]);
 
+  // Per-face overlay for vote/countdown widgets drawn on cube faces
+  const overlayFaceRef = useRef<{ canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; tex: THREE.CanvasTexture; mesh: THREE.Mesh }[]>([]);
+
   // Rig
   const rigGroupRef = useRef<THREE.Group | null>(null);
   const peopleGroupRef = useRef<THREE.Group | null>(null);
@@ -653,6 +869,7 @@ export default function App() {
   const activeLightTabRef = useRef(0);
   const selectionRingRef = useRef<THREE.Mesh | null>(null);
   const showLightHelpersRef = useRef(true);
+  const showLightPanelRef = useRef(false);
 
   // Lights
   const lightObjsRef = useRef<LightObjects[]>([]);
@@ -669,6 +886,61 @@ export default function App() {
   // ─── React State ───────────────────────────────────────────────────────────
   const [autoOrbit, setAutoOrbit] = useState(false);
   const [autoOrbitSpeed, setAutoOrbitSpeed] = useState(2.0);
+  const [bgColor, setBgColor] = useState('#464646');
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+
+  // ─── Countdown overlay ─────────────────────────────────────────────────────
+  const [countdownActive, setCountdownActive] = useState(false);
+  const [countdownRunning, setCountdownRunning] = useState(false);
+  const [countdownSeconds, setCountdownSeconds] = useState(43199); // 11:59:59
+  const [countdownStartStr, setCountdownStartStr] = useState('11:59:59');
+  const [countdownStyle] = useState(0);
+  void countdownStyle;
+  const countdownIntervalRef = useRef<number | null>(null);
+
+  const parseCountdownStr = (s: string): number => {
+    const parts = s.split(':').map(Number);
+    if (parts.length === 3) return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+    if (parts.length === 2) return (parts[0] || 0) * 60 + (parts[1] || 0);
+    return parseInt(s) || 0;
+  };
+  const formatCountdown = (secs: number): string => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const sc = secs % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sc).padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    if (countdownRunning && countdownSeconds > 0) {
+      countdownIntervalRef.current = window.setInterval(() => {
+        setCountdownSeconds(s => {
+          if (s <= 1) { setCountdownRunning(false); return 0; }
+          return s - 1;
+        });
+      }, 1000);
+    } else {
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    }
+    return () => { if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current); };
+  }, [countdownRunning]); // eslint-disable-line
+
+  // Refs for animation loop (avoid stale closures)
+  const countdownActiveRef = useRef(false);
+  const countdownSecondsRef = useRef(43199);
+  const countdownStyleRef = useRef(0);
+
+  // Vote overlay state
+  const [voteOverlayActive, setVoteOverlayActive] = useState(false);
+  const [voteOverlayPhrase, setVoteOverlayPhrase] = useState('¿Siguiente escena?');
+  const [voteOverlayOptA, setVoteOverlayOptA] = useState('Win 98');
+  const [voteOverlayOptB, setVoteOverlayOptB] = useState('Gradient');
+  const [voteOverlayStyle] = useState(0);
+  const [showVoteTimerPanel, setShowVoteTimerPanel] = useState(false);
+  const voteOverlayActiveRef = useRef(false);
+  const voteOverlayParamsRef = useRef<any>({ phrase: '¿Siguiente escena?', optA: 'Win 98', optB: 'Gradient', voteStyle: 0 });
+
   const autoOrbitSpeedRef = useRef(2.0);
   const [cameraList, setCameraList] = useState<MediaDeviceInfo[]>([]);
   const [selectedCamId, setSelectedCamId] = useState('');
@@ -685,7 +957,7 @@ export default function App() {
   const [showResolucionPanel, setShowResolucionPanel] = useState(false);
   const [cubeDims, setCubeDims] = useState({ w: 3.6, h: 3.6, d: 3.6 });
   const [rigStyle, setRigStyle] = useState<'pipe' | 'truss' | 'columns'>('columns');
-  const [showPeople, setShowPeople] = useState(false);
+  const [showPeople, setShowPeople] = useState(true);
   const [showLightHelpers, setShowLightHelpers] = useState(true);
 
   const [activeLightTab, setActiveLightTab] = useState(0);
@@ -695,7 +967,7 @@ export default function App() {
   const chaserModeRef = useRef<'strip' | 'sweep'>('strip');
 
   // Ambient light (configurable, independent from the 4 light strips)
-  const [ambient, setAmbient] = useState({ color: '#8899bb', intensity: 1.0, x: 0, y: 4, z: 0, enabled: true });
+  const [ambient, setAmbient] = useState({ color: '#8899bb', intensity: 1.0, x: 0, y: 4, z: 0, enabled: false });
   const [showAmbientPanel, setShowAmbientPanel] = useState(false);
   const ambientRef = useRef(ambient);
   useEffect(() => { ambientRef.current = ambient; }, [ambient]);
@@ -735,15 +1007,26 @@ export default function App() {
   });
 
   const [lights, setLights] = useState<LightConfig[]>([
-    { id: 0, name: 'LED A', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: -1.70, y: 0, z: 1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12 },
-    { id: 1, name: 'LED B', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: 1.70, y: 0, z: 1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12 },
-    { id: 2, name: 'LED C', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: 1.70, y: 0, z: -1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12 },
-    { id: 3, name: 'LED D', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: -1.70, y: 0, z: -1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12 },
+    { id: 0, name: 'LED A', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: -1.70, y: 0, z: 1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12, spotDistance: 50 },
+    { id: 1, name: 'LED B', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: 1.70, y: 0, z: 1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12, spotDistance: 50 },
+    { id: 2, name: 'LED C', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: 1.70, y: 0, z: -1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12, spotDistance: 50 },
+    { id: 3, name: 'LED D', color: '#ffffff', intensity: 2, strobe: false, strobeHz: 3, type: 'led', x: -1.70, y: 0, z: -1.70, rotX: 0, rotY: 0, rotZ: 0, ledCount: 12, spotDistance: 50 },
   ]);
 
   // Keep refs in sync
   useEffect(() => { autoOrbitRef.current = autoOrbit; }, [autoOrbit]);
   useEffect(() => { autoOrbitSpeedRef.current = autoOrbitSpeed; }, [autoOrbitSpeed]);
+  useEffect(() => { showLightPanelRef.current = showLightPanel; }, [showLightPanel]);
+  useEffect(() => { countdownActiveRef.current = countdownActive; }, [countdownActive]);
+  useEffect(() => { countdownSecondsRef.current = countdownSeconds; }, [countdownSeconds]);
+  useEffect(() => { countdownStyleRef.current = countdownStyle; }, [countdownStyle]);
+  useEffect(() => { voteOverlayActiveRef.current = voteOverlayActive; }, [voteOverlayActive]);
+  useEffect(() => {
+    voteOverlayParamsRef.current = { phrase: voteOverlayPhrase, optA: voteOverlayOptA, optB: voteOverlayOptB, voteStyle: voteOverlayStyle };
+  }, [voteOverlayPhrase, voteOverlayOptA, voteOverlayOptB, voteOverlayStyle]);
+  useEffect(() => {
+    if (sceneRef.current) sceneRef.current.background = new THREE.Color(bgColor);
+  }, [bgColor]);
   useEffect(() => { lightsRef.current = lights; }, [lights]);
 
   // ─── Trailer Video Init ──────────────────────────────────────────────────
@@ -924,7 +1207,7 @@ export default function App() {
 
     // Scene / Camera / Renderer
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0a);
+    scene.background = new THREE.Color('#464646');
     sceneRef.current = scene;
 
     const cam = new THREE.PerspectiveCamera(60, W / H, 0.01, 5000);
@@ -968,6 +1251,8 @@ export default function App() {
     faceOrigTexRef.current = [];
     faceCanvasRef.current.clear();
     faceMeshesRef.current = [];
+    bleedFaceRef.current = [];
+    overlayFaceRef.current = [];
 
     const initialFaces = facesRef.current;
     faceDefs.forEach((def, i) => {
@@ -1026,6 +1311,30 @@ export default function App() {
       bMesh.renderOrder = 1;
       scene.add(bMesh);
       bleedFaceRef.current.push({ canvas: bCanvas, ctx: bCtx, tex: bTex, mesh: bMesh });
+
+      // Overlay mesh — vote/countdown widgets drawn on top of face content
+      const oCanvas = document.createElement('canvas');
+      oCanvas.width = 512; oCanvas.height = 512;
+      const oCtx = oCanvas.getContext('2d')!;
+      const oTex = new THREE.CanvasTexture(oCanvas);
+      oTex.colorSpace = THREE.SRGBColorSpace;
+      const oMat = new THREE.MeshBasicMaterial({
+        map: oTex,
+        transparent: true,
+        blending: THREE.NormalBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        toneMapped: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+      });
+      const oMesh = new THREE.Mesh(faceGeo, oMat);
+      oMesh.position.copy(def.pos);
+      oMesh.rotation.set(...def.rot);
+      oMesh.renderOrder = 2;
+      scene.add(oMesh);
+      overlayFaceRef.current.push({ canvas: oCanvas, ctx: oCtx, tex: oTex, mesh: oMesh });
     });
 
     // ── Interior Lights ──────────────────────────────────────────────────────
@@ -1043,7 +1352,7 @@ export default function App() {
         spot.position.set(cfg.x, cfg.y, cfg.z);
         spot.angle = Math.PI / 7;
         spot.penumbra = 0.25;
-        spot.distance = 10;
+        spot.distance = cfg.spotDistance ?? 50;
         spot.castShadow = true;
         scene.add(spot);
         scene.add(spot.target);
@@ -1118,6 +1427,12 @@ export default function App() {
           bleed.mesh.scale.copy(mesh.scale);
           bleed.mesh.position.copy(mesh.position);
           bleed.mesh.rotation.copy(mesh.rotation);
+        }
+        const ov = overlayFaceRef.current[i];
+        if (ov) {
+          ov.mesh.scale.copy(mesh.scale);
+          ov.mesh.position.copy(mesh.position);
+          ov.mesh.rotation.copy(mesh.rotation);
         }
       });
 
@@ -1225,6 +1540,7 @@ export default function App() {
           case 'gradient': drawGradient(ctx, canvas, time, face.params); break;
           case 'win98': drawWin98(ctx, canvas, time, face.params); break;
           case 'white': drawWhite(ctx, canvas, face.params); break;
+          case 'vote': drawVote(ctx, canvas, face.params); break;
           case 'camera': {
             ctx.fillStyle = '#050505'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             drawGrid(ctx, canvas, 0.05);
@@ -1397,22 +1713,10 @@ export default function App() {
           const dx = Math.sin(rz) * Math.cos(rx);
           const dy = Math.cos(rx) * -1;
           const dz = Math.cos(rz) * Math.cos(rx);
-          threeLight.target.position.set(cfg.x + dx * 3, cfg.y + dy * 3, cfg.z + dz * 3);
+          const sDist = cfg.spotDistance ?? 50;
+          threeLight.target.position.set(cfg.x + dx * sDist, cfg.y + dy * sDist, cfg.z + dz * sDist);
           threeLight.target.updateMatrixWorld();
-
-          // Ray-AABB: find distance to nearest cube wall
-          const dir = [dx, dy, dz];
-          const pos = [cfg.x, cfg.y, cfg.z];
-          let wallDist = 20;
-          for (let a = 0; a < 3; a++) {
-            if (Math.abs(dir[a]) > 0.0001) {
-              for (const sign of [-1, 1]) {
-                const t = (sign * HALF - pos[a]) / dir[a];
-                if (t > 0.01) wallDist = Math.min(wallDist, t);
-              }
-            }
-          }
-          threeLight.distance = wallDist + 0.1;
+          threeLight.distance = sDist;
 
           if (lo.spotHelper) {
             lo.spotHelper.visible = showLightHelpersRef.current;
@@ -1473,11 +1777,11 @@ export default function App() {
         aHelp.visible = showLightHelpersRef.current && a.enabled;
       }
 
-      // Selection ring follows active light — billboard toward camera, always visible
+      // Selection ring — only visible when LUCES panel is open
       const selRing = selectionRingRef.current;
       if (selRing) {
         const activeLo = lightObjsRef.current[activeLightTabRef.current];
-        if (activeLo) {
+        if (activeLo && showLightPanelRef.current) {
           selRing.position.copy(activeLo.helperMesh.position);
           selRing.scale.setScalar(1 + Math.sin(time * 5) * 0.08);
           selRing.quaternion.copy(cam.quaternion);
@@ -1486,6 +1790,22 @@ export default function App() {
           selRing.visible = false;
         }
       }
+
+      // Vote / Countdown overlays on cube faces (can coexist)
+      const cdSecs = countdownSecondsRef.current;
+      const cdH = Math.floor(cdSecs / 3600);
+      const cdM = Math.floor((cdSecs % 3600) / 60);
+      const cdS = cdSecs % 60;
+      const cdFmt = `${String(cdH).padStart(2, '0')}:${String(cdM).padStart(2, '0')}:${String(cdS).padStart(2, '0')}`;
+      const hasVote = voteOverlayActiveRef.current;
+      const hasCd = countdownActiveRef.current;
+      overlayFaceRef.current.forEach(ov => {
+        const { canvas, ctx, tex } = ov;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (hasVote) drawVoteFaceOverlay(ctx, canvas, voteOverlayParamsRef.current);
+        if (hasCd) drawCountdownFaceOverlay(ctx, canvas, cdFmt);
+        tex.needsUpdate = true;
+      });
 
       renderer.render(scene, cam);
     };
@@ -1608,7 +1928,7 @@ export default function App() {
     rigGroupRef.current = group;
   }, [cubeDims, rigStyle]); // eslint-disable-line
 
-  // ─── People group rebuild ─────────────────────────────────────────────────
+  // ─── People group rebuild (FBX model) ────────────────────────────────────
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -1617,21 +1937,65 @@ export default function App() {
       peopleGroupRef.current = null;
     }
     if (!showPeople) return;
-    const group = new THREE.Group();
     const cd = cubeDims;
     const HW = (cd.w / 2) - 0.15, HH = (cd.h / 2) - 0.15, HD = (cd.d / 2) - 0.15;
-    buildAllHumanFigures(group, HW, HH, HD);
+    const floorY = -HH - 0.12;
+
+    const group = new THREE.Group();
     scene.add(group);
     peopleGroupRef.current = group;
+
+    const loader = new FBXLoader();
+    loader.load('/Lowpoly-Base.fbx', (fbx) => {
+      if (!peopleGroupRef.current) return; // component unmounted / reset
+
+      // Compute scale: target height ~1.75m
+      const box = new THREE.Box3().setFromObject(fbx);
+      const modelH = box.max.y - box.min.y;
+      const scale = modelH > 0 ? 1.75 / modelH : 1;
+
+      // Override material to a dark human-looking color
+      const mat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, metalness: 0.1, roughness: 0.9 });
+      fbx.traverse(child => {
+        if ((child as THREE.Mesh).isMesh) {
+          (child as THREE.Mesh).material = mat;
+          (child as THREE.Mesh).castShadow = true;
+        }
+      });
+
+      // 4 positions: 2 inside, 2 outside
+      const positions: [number, number, number, number][] = [
+        [-0.35, floorY, 0, 0],
+        [0.35, floorY, 0, Math.PI],
+        [0, floorY, HD + 2.0, Math.PI],
+        [HW + 2.0, floorY, 0, -Math.PI / 2],
+      ];
+      positions.forEach(([px, py, pz, rotY]) => {
+        const clone = fbx.clone();
+        clone.scale.setScalar(scale);
+        // Move feet to floor (box.min.y is the bottom of the model)
+        clone.position.set(px, py - box.min.y * scale, pz);
+        clone.rotation.y = rotY;
+        group.add(clone);
+      });
+    }, undefined, () => {
+      // FBX failed — fall back to procedural figures
+      if (!peopleGroupRef.current) return;
+      buildAllHumanFigures(group, HW, HH, HD);
+    });
   }, [cubeDims, showPeople]); // eslint-disable-line
 
-  // ─── Attach TransformControls to selected light ───────────────────────────
+  // ─── Attach/detach TransformControls based on panel visibility ───────────
   useEffect(() => {
     const tc = transformControlsRef.current;
     if (!tc) return;
-    const lo = lightObjsRef.current[activeLightTab];
-    if (lo) tc.attach(lo.helperMesh);
-  }, [activeLightTab]);
+    if (showLightPanel) {
+      const lo = lightObjsRef.current[activeLightTab];
+      if (lo) tc.attach(lo.helperMesh);
+    } else {
+      tc.detach();
+    }
+  }, [activeLightTab, showLightPanel]);
 
   // ─── Update face materials when scene/camera changes ─────────────────────
   useEffect(() => {
@@ -1850,7 +2214,7 @@ export default function App() {
       spot.position.set(cfg.x, cfg.y, cfg.z);
       spot.angle = Math.PI / 7;
       spot.penumbra = 0.25;
-      spot.distance = 10;
+      spot.distance = cfg.spotDistance ?? 50;
       spot.castShadow = true;
       scene3.add(spot);
       scene3.add(spot.target);
@@ -1899,6 +2263,31 @@ export default function App() {
   }, []);
 
   // ─── Helpers ───────────────────────────────────────────────────────────────
+  const [presetsOpen, setPresetsOpen] = useState(true);
+
+  const downloadPresetsJSON = () => {
+    const json = JSON.stringify(lightPresets, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'presets_luces.json'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const uploadPresetsJSON = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const parsed = JSON.parse(e.target?.result as string) as LightPreset[];
+        if (!Array.isArray(parsed)) return;
+        const merged = [...lightPresets];
+        parsed.forEach(p => { if (p.name && Array.isArray(p.lights) && !merged.find(m => m.name === p.name)) merged.push(p); });
+        setLightPresets(merged);
+        localStorage.setItem('stage_viz_light_presets', JSON.stringify(merged));
+      } catch { /* invalid JSON */ }
+    };
+    reader.readAsText(file);
+  };
+
   const resetCamera = () => {
     cameraRef.current?.position.set(5, 4, 5);
     cameraRef.current?.lookAt(0, 0, 0);
@@ -1957,12 +2346,13 @@ export default function App() {
         if (parsed.rigStyle) setRigStyle(parsed.rigStyle);
         if (parsed.showPeople !== undefined) setShowPeople(parsed.showPeople);
         if (parsed.ambient) setAmbient(parsed.ambient);
+        if (parsed.bgColor) setBgColor(parsed.bgColor);
       } catch (e) { console.error('Error loading config', e); }
     }
   }, []);
 
   useEffect(() => {
-    const data = JSON.stringify({ faces, lights, cameraScale, offFaceOpacity, selectedCamId, autoOrbit, autoOrbitSpeed, cubeDims, rigStyle, showPeople, ambient });
+    const data = JSON.stringify({ faces, lights, cameraScale, offFaceOpacity, selectedCamId, autoOrbit, autoOrbitSpeed, cubeDims, rigStyle, showPeople, ambient, bgColor });
     localStorage.setItem('stage_viz_config', data);
   }, [faces, lights, cameraScale, offFaceOpacity, selectedCamId, autoOrbit, autoOrbitSpeed, cubeDims, rigStyle, showPeople, ambient]);
 
@@ -2011,550 +2401,683 @@ export default function App() {
             style={{ background: 'transparent', color: C.accent, border: `2px solid ${C.accent}`, padding: '6px 14px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer' }}
             onClick={() => setShowMappingUI(true)}
           >⚙ MAPEO</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1px solid ${C.border}`, padding: '4px 10px' }}>
+            <span style={{ fontSize: 9, color: C.textGhost, letterSpacing: '0.06em' }}>FONDO</span>
+            <input type="color" value={bgColor} onChange={e => setBgColor(e.target.value)}
+              style={{ width: 26, height: 18, cursor: 'pointer', border: 'none', background: 'transparent', padding: 0 }} />
+          </div>
         </div>
       </div>
 
-      {/* ── MAIN ROW (3 columns) ── */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+      {/* ── MAIN ROW: canvas fills all, panels overlay ── */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
 
-        {/* ── LEFT SIDEBAR (Escenas + Cámara) ── */}
-        <div style={{ width: 300, borderRight: `1px solid ${C.border}`, overflowY: 'auto', flexShrink: 0 }} onPointerDown={e => e.stopPropagation()}>
-          {/* PANEL: Cámara Virtual */}
-          <div style={{ borderBottom: `1px solid ${C.border}` }}>
-            <button
-              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showCameraSection ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-              onClick={() => setShowCameraSection(v => !v)}
-            >
-              <span>📹 CÁMARA VIRTUAL</span>
-              <span>{showCameraSection ? '▼' : '▶'}</span>
-            </button>
-            {showCameraSection && (
-              <div style={{ padding: '0 16px 16px' }}>
-                <select
-                  style={{ width: '100%', fontSize: 10, padding: '6px 8px', background: C.bgPanel, color: C.textSecondary, border: `2px solid ${C.borderStrong}`, fontFamily: 'inherit', marginBottom: 8 }}
-                  value={selectedCamId}
-                  onChange={e => setSelectedCamId(e.target.value)}
-                >
-                  {cameraList.length === 0 && <option>— sin cámaras detectadas —</option>}
-                  {cameraList.map(c => (
-                    <option key={c.deviceId} value={c.deviceId}>{c.label || `Cam ${c.deviceId.slice(0, 8)}…`}</option>
-                  ))}
-                </select>
-                <button
-                  style={{ width: '100%', background: 'transparent', color: C.textPrimary, border: `2px solid ${cameraActive ? C.accent : C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', marginBottom: 12 }}
-                  onClick={cameraActive ? stopCamera : startCamera}
-                >{cameraActive && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#fff', marginRight: 6, animation: 'blink 1s infinite' }} />}{cameraActive ? 'DETENER CÁMARA' : '▶ INICIAR CÁMARA'}</button>
-                <div style={{ border: `2px dashed ${C.borderStrong}`, padding: '16px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
-                  <p style={{ fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>📁 CARGAR ARCHIVO</p>
-                  <p style={{ fontSize: 9, color: C.textGhost }}>Video (.mp4) o Imagen (.png)</p>
-                  <input type="file" accept="video/*,image/*"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-                    onChange={e => { const file = e.target.files?.[0]; if (file) handleFileInput(file); }}
-                  />
-                </div>
-                {cameraActive && (
-                  <div style={{ marginTop: 8, padding: '8px', border: '1px solid #1a3a1a', textAlign: 'center' }}>
-                    <p style={{ fontSize: 10, color: C.accent }}>● CÁMARA ACTIVA</p>
-                    <p style={{ fontSize: 9, color: C.textFaint, marginTop: 4 }}>{cameraResolution.w}×{cameraResolution.h}</p>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+        {/* ── THREE.JS CANVAS — fills entire area ── */}
+        <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 
-          {/* PANEL: Escenas */}
-          <div style={{ borderBottom: `1px solid ${C.border}` }}>
-            <button
-              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showFacePanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-              onClick={() => setShowFacePanel(v => !v)}
-            >
-              <span>ESCENAS</span>
-              <span>{showFacePanel ? '▼' : '▶'}</span>
-            </button>
-            {showFacePanel && (
-              <div style={{ padding: '0 16px 16px' }}>
-                {/* Master Projection */}
-                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Master Projection</span>
-                    <span style={{ fontSize: 11, color: C.textSecondary, fontFamily: 'monospace' }}>{(offFaceOpacity * 100).toFixed(0)}%</span>
-                  </div>
-                  <input type="range" min="0" max="1" step="0.01" value={offFaceOpacity}
-                    onChange={e => setOffFaceOpacity(parseFloat(e.target.value))} style={{ width: '100%' }} />
-                </div>
-                {/* Sync */}
-                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-                  <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Sync a todas</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <select
-                      style={{ flex: 1, fontSize: 10, padding: '6px', background: C.bgPanel, color: C.textSecondary, border: `2px solid ${C.borderStrong}`, fontFamily: 'inherit' }}
-                      value={syncScene} onChange={e => setSyncScene(e.target.value as SceneType)}
-                    >
-                      {SCENE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                    <button
-                      style={{ background: C.accent, color: C.accentText, border: `2px solid ${C.accent}`, padding: '6px 12px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
-                      onClick={() => setFaces(prev => prev.map(f => ({ ...f, scene: syncScene })))}
-                    >▶ SYNC</button>
-                  </div>
-                </div>
-                {/* Previews toggle */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Previews</span>
+        {/* ── LEFT OVERLAY PANEL ── */}
+        <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: leftOpen ? 300 : 0, overflow: 'hidden', transition: 'width 0.22s ease', zIndex: 10, background: C.bgPanel + 'f0', borderRight: `1px solid ${C.border}`, backdropFilter: 'blur(2px)' }} onPointerDown={e => e.stopPropagation()}>
+          <div style={{ width: 300, overflowY: 'auto', height: '100%' }}>
+            {/* PANEL: Cámara Virtual */}
+            <div style={{ borderBottom: `1px solid ${C.border}` }}>
+              <button
+                style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showCameraSection ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setShowCameraSection(v => !v)}
+              >
+                <span>📹 CÁMARA VIRTUAL</span>
+                <span>{showCameraSection ? '▼' : '▶'}</span>
+              </button>
+              {showCameraSection && (
+                <div style={{ padding: '0 16px 16px' }}>
+                  <select
+                    style={{ width: '100%', fontSize: 10, padding: '6px 8px', background: C.bgPanel, color: C.textSecondary, border: `2px solid ${C.borderStrong}`, fontFamily: 'inherit', marginBottom: 8 }}
+                    value={selectedCamId}
+                    onChange={e => setSelectedCamId(e.target.value)}
+                  >
+                    {cameraList.length === 0 && <option>— sin cámaras detectadas —</option>}
+                    {cameraList.map(c => (
+                      <option key={c.deviceId} value={c.deviceId}>{c.label || `Cam ${c.deviceId.slice(0, 8)}…`}</option>
+                    ))}
+                  </select>
                   <button
-                    style={{ fontSize: 9, padding: '4px 10px', border: `2px solid ${showPreviews ? C.accent : C.borderStrong}`, color: showPreviews ? C.accent : C.textFaint, background: 'transparent', fontFamily: 'inherit', cursor: 'pointer' }}
-                    onClick={() => setShowPreviews(v => !v)}
-                  >{showPreviews ? 'OCULTAR' : 'MOSTRAR'}</button>
-                </div>
-                {/* Per-face */}
-                {faces.map(face => (
-                  <div key={face.id} style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.bgMain}` }}>
-                    {showPreviews && (
-                      <canvas
-                        ref={el => { if (el) previewCanvasesRef.current.set(face.id, el); else previewCanvasesRef.current.delete(face.id); }}
-                        width={112} height={63}
-                        style={{ display: 'block', width: '50%', border: `1px solid ${C.border}`, background: '#000', marginBottom: 6 }}
-                      />
-                    )}
-                    <input
-                      style={{ width: '100%', fontSize: 10, background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontFamily: 'inherit', padding: '2px 0', marginBottom: 6, outline: 'none' }}
-                      value={face.name} onChange={e => updateFace(face.id, { name: e.target.value })}
+                    style={{ width: '100%', background: 'transparent', color: C.textPrimary, border: `2px solid ${cameraActive ? C.accent : C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', marginBottom: 12 }}
+                    onClick={cameraActive ? stopCamera : startCamera}
+                  >{cameraActive && <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#fff', marginRight: 6, animation: 'blink 1s infinite' }} />}{cameraActive ? 'DETENER CÁMARA' : '▶ INICIAR CÁMARA'}</button>
+                  <div style={{ border: `2px dashed ${C.borderStrong}`, padding: '16px', textAlign: 'center', cursor: 'pointer', position: 'relative' }}>
+                    <p style={{ fontSize: 10, color: C.textMuted, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>📁 CARGAR ARCHIVO</p>
+                    <p style={{ fontSize: 9, color: C.textGhost }}>Video (.mp4) o Imagen (.png)</p>
+                    <input type="file" accept="video/*,image/*"
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                      onChange={e => { const file = e.target.files?.[0]; if (file) handleFileInput(file); }}
                     />
-                    <select
-                      style={{ width: '100%', fontSize: 10, padding: '6px 8px', background: C.bgPanel, color: C.textSecondary, border: `2px solid ${C.borderStrong}`, fontFamily: 'inherit' }}
-                      value={face.scene} onChange={e => updateFace(face.id, { scene: e.target.value as SceneType })}
-                    >
-                      {SCENE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </select>
-                    {(face.scene === 'white' || face.scene === 'gradient' || face.scene === 'win98') && (
-                      <div style={{ marginTop: 8, padding: '8px', border: `1px solid ${C.bgMain}` }}>
-                        <span style={{ fontSize: 9, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Variación</span>
-                        {face.scene === 'white' && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                            <input type="color" value={face.params?.color || '#ffffff'} onChange={e => updateFace(face.id, { params: { ...face.params, color: e.target.value } })}
-                              style={{ width: 40, height: 24, cursor: 'pointer', border: `2px solid ${C.borderStrong}`, background: 'transparent' }} />
-                            <span style={{ fontSize: 9, color: C.textFaint }}>Color</span>
-                          </div>
-                        )}
-                        {(face.scene === 'gradient' || face.scene === 'win98') && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                            <span style={{ fontSize: 9, color: C.textFaint }}>Velocidad</span>
-                            <input type="range" min={0.1} max={3} step={0.1} value={face.params?.speed || 1}
-                              onChange={e => updateFace(face.id, { params: { ...face.params, speed: +e.target.value } })}
-                              style={{ flex: 1 }} />
-                          </div>
-                        )}
-                      </div>
-                    )}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-        </div>{/* end left sidebar */}
-
-        {/* ── CENTER: Three.js Viewport ── */}
-        <div ref={containerRef} style={{ flex: 1, position: 'relative', minWidth: 0 }} />
-
-        {/* ── RIGHT: Controles (320px) ── */}
-        <div style={{ width: 320, borderLeft: `1px solid ${C.border}`, overflowY: 'auto', flexShrink: 0 }} onPointerDown={e => e.stopPropagation()}>
-
-          {/* AMBIENTE */}
-          <div style={{ borderBottom: `1px solid ${C.border}` }}>
-            <button
-              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showAmbientPanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-              onClick={() => setShowAmbientPanel(v => !v)}
-            >
-              <span>☀ LUZ AMBIENTE</span>
-              <span>{showAmbientPanel ? '▼' : '▶'}</span>
-            </button>
-            {showAmbientPanel && (
-              <div style={{ padding: '0 16px 16px' }}>
-                <div style={{ marginBottom: 12 }}>
-                  <button
-                    style={ambient.enabled
-                      ? { width: '100%', background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 600 }
-                      : { width: '100%', background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                    }
-                    onClick={() => setAmbient(a => ({ ...a, enabled: !a.enabled }))}
-                  >{ambient.enabled ? '⚡ AMBIENTE ON' : '◯ AMBIENTE OFF'}</button>
+                  {cameraActive && (
+                    <div style={{ marginTop: 8, padding: '8px', border: '1px solid #1a3a1a', textAlign: 'center' }}>
+                      <p style={{ fontSize: 10, color: C.accent }}>● CÁMARA ACTIVA</p>
+                      <p style={{ fontSize: 9, color: C.textFaint, marginTop: 4 }}>{cameraResolution.w}×{cameraResolution.h}</p>
+                    </div>
+                  )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                  <input type="color" value={ambient.color}
-                    onChange={e => setAmbient(a => ({ ...a, color: e.target.value }))}
-                    style={{ width: 40, height: 32, cursor: 'pointer', border: `2px solid ${C.borderStrong}`, background: 'transparent' }} />
-                  <div style={{ flex: 1 }}>
-                    <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Intensidad</label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <input type="range" min={0} max={10} step={0.1} value={ambient.intensity}
-                        onChange={e => setAmbient(a => ({ ...a, intensity: +e.target.value }))} style={{ flex: 1 }} />
-                      <input type="number" min={0} max={10} step={0.1} value={ambient.intensity}
-                        onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setAmbient(a => ({ ...a, intensity: Math.max(0, Math.min(10, v)) })); }}
+              )}
+            </div>
+
+            {/* PANEL: Escenas */}
+            <div style={{ borderBottom: `1px solid ${C.border}` }}>
+              <button
+                style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showFacePanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setShowFacePanel(v => !v)}
+              >
+                <span>ESCENAS</span>
+                <span>{showFacePanel ? '▼' : '▶'}</span>
+              </button>
+              {showFacePanel && (
+                <div style={{ padding: '0 16px 16px' }}>
+                  {/* Master Projection */}
+                  <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Master Projection</span>
+                      <span style={{ fontSize: 11, color: C.textSecondary, fontFamily: 'monospace' }}>{(offFaceOpacity * 100).toFixed(0)}%</span>
+                    </div>
+                    <input type="range" min="0" max="1" step="0.01" value={offFaceOpacity}
+                      onChange={e => setOffFaceOpacity(parseFloat(e.target.value))} style={{ width: '100%' }} />
+                  </div>
+                  {/* Sync */}
+                  <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+                    <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Sync a todas</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <select
+                        style={{ flex: 1, fontSize: 10, padding: '6px', background: C.bgPanel, color: C.textSecondary, border: `2px solid ${C.borderStrong}`, fontFamily: 'inherit' }}
+                        value={syncScene} onChange={e => setSyncScene(e.target.value as SceneType)}
+                      >
+                        {SCENE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                      <button
+                        style={{ background: C.accent, color: C.accentText, border: `2px solid ${C.accent}`, padding: '6px 12px', fontFamily: 'inherit', fontSize: 10, letterSpacing: '0.1em', cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                        onClick={() => setFaces(prev => prev.map(f => ({ ...f, scene: syncScene })))}
+                      >▶ SYNC</button>
+                    </div>
+                  </div>
+                  {/* Previews toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Previews</span>
+                    <button
+                      style={{ fontSize: 9, padding: '4px 10px', border: `2px solid ${showPreviews ? C.accent : C.borderStrong}`, color: showPreviews ? C.accent : C.textFaint, background: 'transparent', fontFamily: 'inherit', cursor: 'pointer' }}
+                      onClick={() => setShowPreviews(v => !v)}
+                    >{showPreviews ? 'OCULTAR' : 'MOSTRAR'}</button>
+                  </div>
+                  {/* Per-face */}
+                  {faces.map(face => (
+                    <div key={face.id} style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.bgMain}` }}>
+                      {showPreviews && (
+                        <canvas
+                          ref={el => { if (el) previewCanvasesRef.current.set(face.id, el); else previewCanvasesRef.current.delete(face.id); }}
+                          width={112} height={63}
+                          style={{ display: 'block', width: '50%', border: `1px solid ${C.border}`, background: '#000', marginBottom: 6 }}
+                        />
+                      )}
+                      <input
+                        style={{ width: '100%', fontSize: 10, background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.textMuted, fontFamily: 'inherit', padding: '2px 0', marginBottom: 6, outline: 'none' }}
+                        value={face.name} onChange={e => updateFace(face.id, { name: e.target.value })}
+                      />
+                      <select
+                        style={{ width: '100%', fontSize: 10, padding: '6px 8px', background: C.bgPanel, color: C.textSecondary, border: `2px solid ${C.borderStrong}`, fontFamily: 'inherit' }}
+                        value={face.scene} onChange={e => updateFace(face.id, { scene: e.target.value as SceneType })}
+                      >
+                        {SCENE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                      {(face.scene === 'white' || face.scene === 'gradient' || face.scene === 'win98') && (
+                        <div style={{ marginTop: 8, padding: '8px', border: `1px solid ${C.bgMain}` }}>
+                          <span style={{ fontSize: 9, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Variación</span>
+                          {face.scene === 'white' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                              <input type="color" value={face.params?.color || '#ffffff'} onChange={e => updateFace(face.id, { params: { ...face.params, color: e.target.value } })}
+                                style={{ width: 40, height: 24, cursor: 'pointer', border: `2px solid ${C.borderStrong}`, background: 'transparent' }} />
+                              <span style={{ fontSize: 9, color: C.textFaint }}>Color</span>
+                            </div>
+                          )}
+                          {(face.scene === 'gradient' || face.scene === 'win98') && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                              <span style={{ fontSize: 9, color: C.textFaint }}>Velocidad</span>
+                              <input type="range" min={0.1} max={3} step={0.1} value={face.params?.speed || 1}
+                                onChange={e => updateFace(face.id, { params: { ...face.params, speed: +e.target.value } })}
+                                style={{ flex: 1 }} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* PANEL: Vote & Timer */}
+            <div style={{ borderBottom: `1px solid ${C.border}` }}>
+              <button
+                style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showVoteTimerPanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setShowVoteTimerPanel(v => !v)}
+              >
+                <span>🗳 VOTE & TIMER</span>
+                <span>{showVoteTimerPanel ? '▼' : '▶'}</span>
+              </button>
+              {showVoteTimerPanel && (
+                <div style={{ padding: '0 16px 16px' }}>
+
+                  {/* ── VOTE OVERLAY ── */}
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 9, color: C.textGhost, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, borderBottom: `1px solid ${C.border}`, paddingBottom: 6 }}>Votación en cubo</div>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                      <button
+                        style={{ flex: 1, fontSize: 9, padding: '6px', background: voteOverlayActive ? C.accent : 'transparent', color: voteOverlayActive ? '#fff' : C.textMuted, border: `1px solid ${voteOverlayActive ? C.accent : C.border}`, fontFamily: 'inherit', cursor: 'pointer' }}
+                        onClick={() => setVoteOverlayActive(v => !v)}>
+                        {voteOverlayActive ? '◉ VISIBLE' : '○ OCULTO'}
+                      </button>
+                    </div>
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ fontSize: 8, color: C.textGhost, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Pregunta</span>
+                      <input type="text" value={voteOverlayPhrase}
+                        onChange={e => setVoteOverlayPhrase(e.target.value)}
+                        style={{ width: '100%', fontSize: 10, background: C.bgInput, border: `1px solid ${C.borderStrong}`, color: C.textPrimary, fontFamily: 'inherit', padding: '4px 6px', boxSizing: 'border-box' }} />
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: 8, color: C.textGhost, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Opción A</span>
+                        <input type="text" value={voteOverlayOptA}
+                          onChange={e => setVoteOverlayOptA(e.target.value)}
+                          style={{ width: '100%', fontSize: 10, background: C.bgInput, border: `1px solid ${C.borderStrong}`, color: C.textPrimary, fontFamily: 'inherit', padding: '4px 6px', boxSizing: 'border-box' }} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: 8, color: C.textGhost, textTransform: 'uppercase', display: 'block', marginBottom: 3 }}>Opción B</span>
+                        <input type="text" value={voteOverlayOptB}
+                          onChange={e => setVoteOverlayOptB(e.target.value)}
+                          style={{ width: '100%', fontSize: 10, background: C.bgInput, border: `1px solid ${C.borderStrong}`, color: C.textPrimary, fontFamily: 'inherit', padding: '4px 6px', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── COUNTDOWN OVERLAY ── */}
+                  <div>
+                    <div style={{ fontSize: 9, color: C.textGhost, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, borderBottom: `1px solid ${C.border}`, paddingBottom: 6 }}>Timer en cubo</div>
+                    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                      <button style={{ flex: 1, fontSize: 9, padding: '6px', background: countdownActive ? C.accent : 'transparent', color: countdownActive ? '#fff' : C.textMuted, border: `1px solid ${countdownActive ? C.accent : C.border}`, fontFamily: 'inherit', cursor: 'pointer' }}
+                        onClick={() => setCountdownActive(v => !v)}>
+                        {countdownActive ? '◉ VISIBLE' : '○ OCULTO'}
+                      </button>
+                      <button style={{ flex: 1, fontSize: 9, padding: '6px', background: countdownRunning ? 'rgba(255,80,80,0.15)' : 'transparent', color: countdownRunning ? '#ff5555' : C.textMuted, border: `1px solid ${countdownRunning ? '#ff5555' : C.border}`, fontFamily: 'inherit', cursor: 'pointer' }}
+                        onClick={() => setCountdownRunning(v => !v)}>
+                        {countdownRunning ? '⏸ PAUSAR' : '▶ INICIAR'}
+                      </button>
+                      <button style={{ fontSize: 9, padding: '6px 8px', background: 'transparent', color: C.textGhost, border: `1px solid ${C.border}`, fontFamily: 'inherit', cursor: 'pointer' }}
+                        onClick={() => { setCountdownRunning(false); setCountdownSeconds(parseCountdownStr(countdownStartStr)); }}>
+                        ↺
+                      </button>
+                    </div>
+                    <div style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: 22, color: C.accent, letterSpacing: '0.1em', marginBottom: 8, padding: '6px 0', borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}` }}>
+                      {formatCountdown(countdownSeconds)}
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={{ fontSize: 8, color: C.textGhost, textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>Tiempo inicial (HH:MM:SS)</label>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <input type="text" value={countdownStartStr}
+                          onChange={e => setCountdownStartStr(e.target.value)}
+                          placeholder="11:59:59"
+                          style={{ flex: 1, fontSize: 11, fontFamily: 'monospace', background: C.bgInput, border: `1px solid ${C.borderStrong}`, color: C.accent, padding: '5px 8px', letterSpacing: '0.1em' }} />
+                        <button style={{ fontSize: 9, padding: '5px 10px', background: 'transparent', color: C.textGhost, border: `1px solid ${C.border}`, fontFamily: 'inherit', cursor: 'pointer' }}
+                          onClick={() => { const s = parseCountdownStr(countdownStartStr); setCountdownSeconds(s); setCountdownRunning(false); }}>SET</button>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+
+          </div>{/* end left panel inner */}
+        </div>{/* end left overlay panel */}
+
+        {/* Left toggle button — floats at panel edge */}
+        <button
+          onClick={() => setLeftOpen(v => !v)}
+          style={{ position: 'absolute', top: '50%', left: leftOpen ? 300 : 0, transform: 'translateY(-50%)', transition: 'left 0.22s ease', zIndex: 11, width: 18, height: 40, background: C.bgPanel, border: `1px solid ${C.border}`, borderLeft: 'none', cursor: 'pointer', color: C.textGhost, fontSize: 9, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          title={leftOpen ? 'Ocultar panel' : 'Mostrar panel'}
+        >{leftOpen ? '◀' : '▶'}</button>
+
+        {/* Right toggle button — floats at panel edge */}
+        <button
+          onClick={() => setRightOpen(v => !v)}
+          style={{ position: 'absolute', top: '50%', right: rightOpen ? 320 : 0, transform: 'translateY(-50%)', transition: 'right 0.22s ease', zIndex: 11, width: 18, height: 40, background: C.bgPanel, border: `1px solid ${C.border}`, borderRight: 'none', cursor: 'pointer', color: C.textGhost, fontSize: 9, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          title={rightOpen ? 'Ocultar panel' : 'Mostrar panel'}
+        >{rightOpen ? '▶' : '◀'}</button>
+
+        {/* ── RIGHT OVERLAY PANEL ── */}
+        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: rightOpen ? 320 : 0, overflow: 'hidden', transition: 'width 0.22s ease', zIndex: 10, background: C.bgPanel + 'f0', borderLeft: `1px solid ${C.border}` }} onPointerDown={e => e.stopPropagation()}>
+          <div style={{ width: 320, overflowY: 'auto', height: '100%' }}>
+
+            {/* AMBIENTE */}
+            <div style={{ borderBottom: `1px solid ${C.border}` }}>
+              <button
+                style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showAmbientPanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setShowAmbientPanel(v => !v)}
+              >
+                <span>☀ LUZ AMBIENTE</span>
+                <span>{showAmbientPanel ? '▼' : '▶'}</span>
+              </button>
+              {showAmbientPanel && (
+                <div style={{ padding: '0 16px 16px' }}>
+                  <div style={{ marginBottom: 12 }}>
+                    <button
+                      style={ambient.enabled
+                        ? { width: '100%', background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 600 }
+                        : { width: '100%', background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                      }
+                      onClick={() => setAmbient(a => ({ ...a, enabled: !a.enabled }))}
+                    >{ambient.enabled ? '⚡ AMBIENTE OFF' : '◯ AMBIENTE ON'}</button>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                    <input type="color" value={ambient.color}
+                      onChange={e => setAmbient(a => ({ ...a, color: e.target.value }))}
+                      style={{ width: 40, height: 32, cursor: 'pointer', border: `2px solid ${C.borderStrong}`, background: 'transparent' }} />
+                    <div style={{ flex: 1 }}>
+                      <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Intensidad</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input type="range" min={0} max={10} step={0.1} value={ambient.intensity}
+                          onChange={e => setAmbient(a => ({ ...a, intensity: +e.target.value }))} style={{ flex: 1 }} />
+                        <input type="number" min={0} max={10} step={0.1} value={ambient.intensity}
+                          onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setAmbient(a => ({ ...a, intensity: Math.max(0, Math.min(10, v)) })); }}
+                          style={{ width: 52, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '3px 4px' }} />
+                      </div>
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Posición XYZ</p>
+                  {(['x', 'y', 'z'] as const).map(ax => (
+                    <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 500, minWidth: 12, color: ax === 'x' ? '#f66' : ax === 'y' ? '#6f6' : '#66f' }}>{ax.toUpperCase()}</span>
+                      <input type="range" min={-8} max={8} step={0.1} value={ambient[ax]}
+                        onChange={e => setAmbient(a => ({ ...a, [ax]: +e.target.value }))} style={{ flex: 1 }} />
+                      <input type="number" min={-8} max={8} step={0.1} value={ambient[ax]}
+                        onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setAmbient(a => ({ ...a, [ax]: Math.max(-8, Math.min(8, v)) })); }}
                         style={{ width: 52, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '3px 4px' }} />
                     </div>
-                  </div>
+                  ))}
                 </div>
-                <p style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Posición XYZ</p>
-                {(['x', 'y', 'z'] as const).map(ax => (
-                  <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                    <span style={{ fontSize: 11, fontWeight: 500, minWidth: 12, color: ax === 'x' ? '#f66' : ax === 'y' ? '#6f6' : '#66f' }}>{ax.toUpperCase()}</span>
-                    <input type="range" min={-8} max={8} step={0.1} value={ambient[ax]}
-                      onChange={e => setAmbient(a => ({ ...a, [ax]: +e.target.value }))} style={{ flex: 1 }} />
-                    <input type="number" min={-8} max={8} step={0.1} value={ambient[ax]}
-                      onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setAmbient(a => ({ ...a, [ax]: Math.max(-8, Math.min(8, v)) })); }}
-                      style={{ width: 52, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '3px 4px' }} />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* LUCES */}
-          <div style={{ borderBottom: `1px solid ${C.border}` }}>
-            <button
-              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showLightPanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-              onClick={() => setShowLightPanel(v => !v)}
-            >
-              <span>LUCES</span>
-              <span>{showLightPanel ? '▼' : '▶'}</span>
-            </button>
-            {showLightPanel && (
-              <div style={{ padding: '0 16px 16px' }}>
-                {/* Light Presets */}
-                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-                  <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Presets</label>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                    <input type="text" placeholder="Nombre…" value={presetName}
-                      onChange={e => setPresetName(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && savePreset()}
-                      style={{ flex: 1, fontSize: 10, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.textSecondary, fontFamily: 'inherit', padding: '6px 8px' }}
-                    />
-                    <button
-                      style={{ background: C.accent, color: C.accentText, border: `2px solid ${C.accent}`, padding: '6px 12px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }}
-                      onClick={savePreset}
-                    >SAVE</button>
-                  </div>
-                  {lightPresets.length === 0 && <p style={{ fontSize: 9, color: C.textGhost, fontStyle: 'italic' }}>Sin presets guardados</p>}
-                  <div style={{ maxHeight: 120, overflowY: 'auto' }}>
-                    {lightPresets.map(p => (
-                      <div key={p.name} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-                        <button
-                          style={{ flex: 1, textAlign: 'left', fontSize: 9, padding: '6px 8px', background: C.bgPanel, color: C.textTertiary, border: `2px solid ${C.border}`, fontFamily: 'inherit', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                          onClick={() => loadPreset(p)}
-                        >▶ {p.name}</button>
-                        <button
-                          style={{ fontSize: 9, padding: '6px 8px', background: 'transparent', color: C.danger, border: `2px solid ${C.dangerBorder}`, fontFamily: 'inherit', cursor: 'pointer' }}
-                          onClick={() => deletePreset(p.name)}
-                        >✕</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Master controls */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                  <button
-                    style={lightsAllOff
-                      ? { flex: 1, background: '#ff3333', color: C.white, border: '2px solid #ff3333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
-                      : { flex: 1, background: 'transparent', color: C.textFaint, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                    }
-                    onClick={() => setLightsAllOff(v => !v)}
-                  >{lightsAllOff ? '🔴 OFF' : '⚡ ON'}</button>
-                  <button
-                    style={chaserActive
-                      ? { flex: 1, background: C.accent, color: C.accentText, border: `2px solid ${C.accent}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
-                      : { flex: 1, background: 'transparent', color: C.textFaint, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                    }
-                    onClick={() => setChaserActive(v => !v)}
-                  >⚡ CHASE</button>
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <button
-                    style={!showLightHelpers
-                      ? { width: '100%', background: 'transparent', color: C.accent, border: `2px solid ${C.accent}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 600 }
-                      : { width: '100%', background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                    }
-                    onClick={() => setShowLightHelpers(v => !v)}
-                  >{showLightHelpers ? '👁️ OCULTAR LUCES 3D' : '👁️ MOSTRAR LUCES 3D'}</button>
-                </div>
-                {chaserActive && (
-                  <>
+            {/* LUCES */}
+            <div style={{ borderBottom: `1px solid ${C.border}` }}>
+              <button
+                style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showLightPanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setShowLightPanel(v => !v)}
+              >
+                <span>LUCES</span>
+                <span>{showLightPanel ? '▼' : '▶'}</span>
+              </button>
+              {showLightPanel && (
+                <div style={{ padding: '0 16px 16px' }}>
+                  {/* Light Presets */}
+                  <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+                    <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Presets</label>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                      <input type="text" placeholder="Nombre…" value={presetName}
+                        onChange={e => setPresetName(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && savePreset()}
+                        style={{ flex: 1, fontSize: 10, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.textSecondary, fontFamily: 'inherit', padding: '6px 8px' }}
+                      />
                       <button
-                        style={chaserMode === 'strip'
-                          ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '6px', fontFamily: 'inherit', fontSize: 9, cursor: 'pointer', fontWeight: 500 }
-                          : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '6px', fontFamily: 'inherit', fontSize: 9, cursor: 'pointer' }
-                        }
-                        onClick={() => setChaserMode('strip')}
-                      >▦ TIRAS ON/OFF</button>
-                      <button
-                        style={chaserMode === 'sweep'
-                          ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '6px', fontFamily: 'inherit', fontSize: 9, cursor: 'pointer', fontWeight: 500 }
-                          : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '6px', fontFamily: 'inherit', fontSize: 9, cursor: 'pointer' }
-                        }
-                        onClick={() => setChaserMode('sweep')}
-                      >〰 BARRIDO</button>
+                        style={{ background: C.accent, color: C.accentText, border: `2px solid ${C.accent}`, padding: '6px 12px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }}
+                        onClick={savePreset}
+                      >SAVE</button>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                      <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', minWidth: 32 }}>BPM</span>
-                      <input type="range" min={30} max={300} step={1} value={chaserBpm}
-                        onChange={e => setChaserBpm(+e.target.value)} style={{ flex: 1 }} />
-                      <input type="number" min={30} max={300} value={chaserBpm}
-                        onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setChaserBpm(Math.max(30, Math.min(300, v))); }}
-                        style={{ width: 48, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '4px' }} />
+                    {/* JSON import/export */}
+                    <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+                      <button style={{ flex: 1, fontSize: 8, padding: '4px 6px', background: 'transparent', color: C.textGhost, border: `1px solid ${C.border}`, fontFamily: 'inherit', cursor: 'pointer', textTransform: 'uppercase' }}
+                        onClick={downloadPresetsJSON} title="Exportar presets">↓ Export JSON</button>
+                      <label style={{ flex: 1, fontSize: 8, padding: '4px 6px', background: 'transparent', color: C.textGhost, border: `1px solid ${C.border}`, fontFamily: 'inherit', cursor: 'pointer', textTransform: 'uppercase', textAlign: 'center' }}>
+                        ↑ Import JSON
+                        <input type="file" accept=".json" style={{ display: 'none' }}
+                          onChange={e => { const f = e.target.files?.[0]; if (f) uploadPresetsJSON(f); e.target.value = ''; }} />
+                      </label>
                     </div>
-                  </>
-                )}
-
-                {/* Light tabs */}
-                <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
-                  {lights.map((l, i) => {
-                    const typeEmoji = l.type === 'spot' ? '🔦' : '💡';
-                    const isActive = activeLightTab === i;
-                    return (
-                      <button key={i}
-                        style={{ flex: 1, fontSize: 10, padding: '6px 4px', background: 'transparent', color: isActive ? C.accent : C.textMuted, fontWeight: 'bold', border: isActive ? `2px solid ${C.accent}` : `2px solid ${C.borderStrong}`, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                        onClick={() => setActiveLightTab(i)}
-                      >{typeEmoji} {l.name.split(' ')[1]}</button>
-                    );
-                  })}
-                </div>
-
-                {(() => {
-                  const l = lights[activeLightTab];
-                  if (!l) return null;
-                  const i = activeLightTab;
-                  const numInput = (val: number, min: number, max: number, step: number, key: string) => (
-                    <input type="number" min={min} max={max} step={step} value={val}
-                      onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) updateLight(i, { [key]: Math.max(min, Math.min(max, v)) }); }}
-                      style={{ width: 52, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '3px 4px' }}
-                    />
-                  );
-                  return (
-                    <div>
-                      <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
-                        {(['point', 'spot', 'led'] as LightType[]).map(t => (
-                          <button key={t}
-                            style={l.type === t
-                              ? { flex: 1, fontSize: 9, padding: '8px 4px', background: 'transparent', color: C.white, border: `2px solid ${C.white}`, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }
-                              : { flex: 1, fontSize: 9, padding: '8px 4px', background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, cursor: 'pointer', fontFamily: 'inherit' }
-                            }
-                            onClick={() => switchLightType(i, t)}>
-                            {t === 'point' ? '💡 POINT' : t === 'spot' ? '🔦 SPOT' : '💡 LEDS'}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                        <input type="text" value={l.name} onChange={e => updateLight(i, { name: e.target.value })}
-                          placeholder="Nombre"
-                          style={{ flex: 1, fontSize: 10, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.textPrimary, fontFamily: 'monospace', padding: '4px 6px' }} />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                        <input type="color" value={l.color} onChange={e => updateLight(i, { color: e.target.value })}
-                          style={{ width: 40, height: 32, cursor: 'pointer', border: `2px solid ${C.borderStrong}`, background: 'transparent' }} />
-                        <div style={{ flex: 1 }}>
-                          <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Intensidad</label>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <input type="range" min={0} max={10} step={0.1} value={l.intensity}
-                              onChange={e => updateLight(i, { intensity: +e.target.value })} style={{ flex: 1 }} />
-                            {numInput(l.intensity, 0, 10, 0.1, 'intensity')}
-                          </div>
-                        </div>
-                      </div>
-                      {l.type === 'led' && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                          <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', minWidth: 36 }}>LEDs</span>
-                          <input type="range" min={2} max={48} step={1} value={l.ledCount ?? 12}
-                            onChange={e => { updateLight(i, { ledCount: +e.target.value }); switchLightType(i, 'led'); }} style={{ flex: 1 }} />
-                          {numInput(l.ledCount ?? 12, 2, 48, 1, 'ledCount')}
-                        </div>
-                      )}
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                          <div className={`toggle-switch ${l.strobe ? 'active' : ''}`} onClick={() => updateLight(i, { strobe: !l.strobe })} />
-                          <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase' }}>Strobe</span>
-                        </div>
-                        {l.strobe && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', minWidth: 24 }}>Hz</span>
-                            <input type="range" min={0.5} max={20} step={0.5} value={l.strobeHz ?? 3}
-                              onChange={e => updateLight(i, { strobeHz: +e.target.value })} style={{ flex: 1 }} />
-                            {numInput(l.strobeHz ?? 3, 0.5, 20, 0.5, 'strobeHz')}
-                          </div>
-                        )}
-                      </div>
-                      <p style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Posición XYZ</p>
-                      {(['x', 'y', 'z'] as const).map(ax => (
-                        <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 500, minWidth: 12, color: ax === 'x' ? '#f66' : ax === 'y' ? '#6f6' : '#66f' }}>{ax.toUpperCase()}</span>
-                          <input type="range" min={-2.5} max={2.5} step={0.02} value={l[ax]}
-                            onChange={e => updateLight(i, { [ax]: +e.target.value })} style={{ flex: 1 }} />
-                          {numInput(l[ax], -2.5, 2.5, 0.01, ax)}
+                    {lightPresets.length === 0 && <p style={{ fontSize: 9, color: C.textGhost, fontStyle: 'italic' }}>Sin presets guardados</p>}
+                    <div style={{ maxHeight: 120, overflowY: 'auto' }}>
+                      {lightPresets.map(p => (
+                        <div key={p.name} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
+                          <button
+                            style={{ flex: 1, textAlign: 'left', fontSize: 9, padding: '6px 8px', background: C.bgPanel, color: C.textTertiary, border: `2px solid ${C.border}`, fontFamily: 'inherit', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            onClick={() => loadPreset(p)}
+                          >▶ {p.name}</button>
+                          <button
+                            style={{ fontSize: 9, padding: '6px 8px', background: 'transparent', color: C.danger, border: `2px solid ${C.dangerBorder}`, fontFamily: 'inherit', cursor: 'pointer' }}
+                            onClick={() => deletePreset(p.name)}
+                          >✕</button>
                         </div>
                       ))}
-                      {(l.type === 'spot' || l.type === 'led') && (
-                        <>
-                          <p style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, marginTop: 12 }}>Rotación</p>
-                          {(['rotX', 'rotZ'] as const).map(ax => (
-                            <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                              <span style={{ fontSize: 9, color: C.textLabel, minWidth: 32 }}>{ax === 'rotX' ? 'X' : 'Z'}</span>
-                              <input type="range" min={-180} max={180} step={1} value={l[ax] ?? 0}
-                                onChange={e => updateLight(i, { [ax]: +e.target.value })} style={{ flex: 1 }} />
-                              {numInput(l[ax] ?? 0, -180, 180, 1, ax === 'rotZ' ? 'rotZ' : 'rotX')}
-                            </div>
+                    </div>
+                  </div>
+
+                  {/* Master controls */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                    <button
+                      style={lightsAllOff
+                        ? { flex: 1, background: '#ff3333', color: C.white, border: '2px solid #ff3333', padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
+                        : { flex: 1, background: 'transparent', color: C.textFaint, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                      }
+                      onClick={() => setLightsAllOff(v => !v)}
+                    >{lightsAllOff ? '🔴 OFF' : '⚡ ON'}</button>
+                    <button
+                      style={chaserActive
+                        ? { flex: 1, background: C.accent, color: C.accentText, border: `2px solid ${C.accent}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
+                        : { flex: 1, background: 'transparent', color: C.textFaint, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                      }
+                      onClick={() => setChaserActive(v => !v)}
+                    >⚡ CHASE</button>
+                  </div>
+                  <div style={{ marginBottom: 16 }}>
+                    <button
+                      style={!showLightHelpers
+                        ? { width: '100%', background: 'transparent', color: C.accent, border: `2px solid ${C.accent}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 600 }
+                        : { width: '100%', background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '7px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                      }
+                      onClick={() => setShowLightHelpers(v => !v)}
+                    >{showLightHelpers ? '👁️ OCULTAR LUCES 3D' : '👁️ MOSTRAR LUCES 3D'}</button>
+                  </div>
+                  {chaserActive && (
+                    <>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                        <button
+                          style={chaserMode === 'strip'
+                            ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '6px', fontFamily: 'inherit', fontSize: 9, cursor: 'pointer', fontWeight: 500 }
+                            : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '6px', fontFamily: 'inherit', fontSize: 9, cursor: 'pointer' }
+                          }
+                          onClick={() => setChaserMode('strip')}
+                        >▦ TIRAS ON/OFF</button>
+                        <button
+                          style={chaserMode === 'sweep'
+                            ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '6px', fontFamily: 'inherit', fontSize: 9, cursor: 'pointer', fontWeight: 500 }
+                            : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '6px', fontFamily: 'inherit', fontSize: 9, cursor: 'pointer' }
+                          }
+                          onClick={() => setChaserMode('sweep')}
+                        >〰 BARRIDO</button>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                        <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', minWidth: 32 }}>BPM</span>
+                        <input type="range" min={30} max={300} step={1} value={chaserBpm}
+                          onChange={e => setChaserBpm(+e.target.value)} style={{ flex: 1 }} />
+                        <input type="number" min={30} max={300} value={chaserBpm}
+                          onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) setChaserBpm(Math.max(30, Math.min(300, v))); }}
+                          style={{ width: 48, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '4px' }} />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Light tabs */}
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+                    {lights.map((l, i) => {
+                      const typeEmoji = l.type === 'spot' ? '🔦' : '💡';
+                      const isActive = activeLightTab === i;
+                      return (
+                        <button key={i}
+                          style={{ flex: 1, fontSize: 10, padding: '6px 4px', background: 'transparent', color: isActive ? C.accent : C.textMuted, fontWeight: 'bold', border: isActive ? `2px solid ${C.accent}` : `2px solid ${C.borderStrong}`, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                          onClick={() => setActiveLightTab(i)}
+                        >{typeEmoji} {l.name.split(' ')[1]}</button>
+                      );
+                    })}
+                  </div>
+
+                  {(() => {
+                    const l = lights[activeLightTab];
+                    if (!l) return null;
+                    const i = activeLightTab;
+                    const numInput = (val: number, min: number, max: number, step: number, key: string) => (
+                      <input type="number" min={min} max={max} step={step} value={val}
+                        onChange={e => { const v = parseFloat(e.target.value); if (!isNaN(v)) updateLight(i, { [key]: Math.max(min, Math.min(max, v)) }); }}
+                        style={{ width: 52, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '3px 4px' }}
+                      />
+                    );
+                    return (
+                      <div>
+                        <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+                          {(['point', 'spot', 'led'] as LightType[]).map(t => (
+                            <button key={t}
+                              style={l.type === t
+                                ? { flex: 1, fontSize: 9, padding: '8px 4px', background: 'transparent', color: C.white, border: `2px solid ${C.white}`, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }
+                                : { flex: 1, fontSize: 9, padding: '8px 4px', background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, cursor: 'pointer', fontFamily: 'inherit' }
+                              }
+                              onClick={() => switchLightType(i, t)}>
+                              {t === 'point' ? '💡 POINT' : t === 'spot' ? '🔦 SPOT' : '💡 LEDS'}
+                            </button>
                           ))}
-                        </>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                          <input type="text" value={l.name} onChange={e => updateLight(i, { name: e.target.value })}
+                            placeholder="Nombre"
+                            style={{ flex: 1, fontSize: 10, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.textPrimary, fontFamily: 'monospace', padding: '4px 6px' }} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                          <input type="color" value={l.color} onChange={e => updateLight(i, { color: e.target.value })}
+                            style={{ width: 40, height: 32, cursor: 'pointer', border: `2px solid ${C.borderStrong}`, background: 'transparent' }} />
+                          <div style={{ flex: 1 }}>
+                            <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 4 }}>Intensidad</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <input type="range" min={0} max={10} step={0.1} value={l.intensity}
+                                onChange={e => updateLight(i, { intensity: +e.target.value })} style={{ flex: 1 }} />
+                              {numInput(l.intensity, 0, 10, 0.1, 'intensity')}
+                            </div>
+                          </div>
+                        </div>
+                        {l.type === 'led' && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', minWidth: 36 }}>LEDs</span>
+                            <input type="range" min={2} max={48} step={1} value={l.ledCount ?? 12}
+                              onChange={e => { updateLight(i, { ledCount: +e.target.value }); switchLightType(i, 'led'); }} style={{ flex: 1 }} />
+                            {numInput(l.ledCount ?? 12, 2, 48, 1, 'ledCount')}
+                          </div>
+                        )}
+                        <div style={{ marginBottom: 16 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                            <div className={`toggle-switch ${l.strobe ? 'active' : ''}`} onClick={() => updateLight(i, { strobe: !l.strobe })} />
+                            <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase' }}>Strobe</span>
+                          </div>
+                          {l.strobe && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', minWidth: 24 }}>Hz</span>
+                              <input type="range" min={0.5} max={20} step={0.5} value={l.strobeHz ?? 3}
+                                onChange={e => updateLight(i, { strobeHz: +e.target.value })} style={{ flex: 1 }} />
+                              {numInput(l.strobeHz ?? 3, 0.5, 20, 0.5, 'strobeHz')}
+                            </div>
+                          )}
+                        </div>
+                        <p style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>Posición XYZ</p>
+                        {(['x', 'y', 'z'] as const).map(ax => (
+                          <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 500, minWidth: 12, color: ax === 'x' ? '#f66' : ax === 'y' ? '#6f6' : '#66f' }}>{ax.toUpperCase()}</span>
+                            <input type="range" min={-2.5} max={2.5} step={0.02} value={l[ax]}
+                              onChange={e => updateLight(i, { [ax]: +e.target.value })} style={{ flex: 1 }} />
+                            {numInput(l[ax], -2.5, 2.5, 0.01, ax)}
+                          </div>
+                        ))}
+                        {l.type === 'spot' && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                              <span style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', minWidth: 64 }}>Distancia</span>
+                              <input type="range" min={0.5} max={100} step={0.5} value={l.spotDistance ?? 50}
+                                onChange={e => updateLight(i, { spotDistance: +e.target.value })} style={{ flex: 1 }} />
+                              {numInput(l.spotDistance ?? 50, 0.5, 100, 0.5, 'spotDistance')}
+                              <span style={{ fontSize: 8, color: C.textGhost }}>m</span>
+                            </div>
+                          </div>
+                        )}
+                        {(l.type === 'spot' || l.type === 'led') && (
+                          <>
+                            <p style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8, marginTop: 12 }}>Rotación</p>
+                            {(['rotX', 'rotZ'] as const).map(ax => (
+                              <div key={ax} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                <span style={{ fontSize: 9, color: C.textLabel, minWidth: 32 }}>{ax === 'rotX' ? 'X' : 'Z'}</span>
+                                <input type="range" min={-180} max={180} step={1} value={l[ax] ?? 0}
+                                  onChange={e => updateLight(i, { [ax]: +e.target.value })} style={{ flex: 1 }} />
+                                {numInput(l[ax] ?? 0, -180, 180, 1, ax === 'rotZ' ? 'rotZ' : 'rotX')}
+                              </div>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
 
-          {/* ESTRUCTURA */}
-          <div style={{ borderBottom: `1px solid ${C.border}` }}>
-            <button
-              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showEstructuraPanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-              onClick={() => setShowEstructuraPanel(v => !v)}
-            >
-              <span>ESTRUCTURA</span>
-              <span>{showEstructuraPanel ? '▼' : '▶'}</span>
-            </button>
-            {showEstructuraPanel && (
-              <div style={{ padding: '0 16px 16px' }}>
-                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-                  <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Estilo Rig</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
+            {/* ESTRUCTURA */}
+            <div style={{ borderBottom: `1px solid ${C.border}` }}>
+              <button
+                style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showEstructuraPanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setShowEstructuraPanel(v => !v)}
+              >
+                <span>ESTRUCTURA</span>
+                <span>{showEstructuraPanel ? '▼' : '▶'}</span>
+              </button>
+              {showEstructuraPanel && (
+                <div style={{ padding: '0 16px 16px' }}>
+                  <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+                    <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Estilo Rig</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        style={rigStyle === 'pipe'
+                          ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
+                          : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                        }
+                        onClick={() => setRigStyle('pipe')}
+                      >⬜ PIPE</button>
+                      <button
+                        style={rigStyle === 'truss'
+                          ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
+                          : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                        }
+                        onClick={() => setRigStyle('truss')}
+                      >▦ TRUSS</button>
+                      <button
+                        style={rigStyle === 'columns'
+                          ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
+                          : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                        }
+                        onClick={() => setRigStyle('columns')}
+                      >🏛️ COLUMNAS</button>
+                    </div>
+                  </div>
+
+                  {/* People toggle */}
+                  <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
+                    <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Personas (escala)</label>
                     <button
-                      style={rigStyle === 'pipe'
-                        ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
-                        : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
+                      style={showPeople
+                        ? { width: '100%', background: 'transparent', color: C.accent, border: `2px solid ${C.accent}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 600 }
+                        : { width: '100%', background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
                       }
-                      onClick={() => setRigStyle('pipe')}
-                    >⬜ PIPE</button>
-                    <button
-                      style={rigStyle === 'truss'
-                        ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
-                        : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                      }
-                      onClick={() => setRigStyle('truss')}
-                    >▦ TRUSS</button>
-                    <button
-                      style={rigStyle === 'columns'
-                        ? { flex: 1, background: 'transparent', color: C.white, border: `2px solid ${C.white}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 500 }
-                        : { flex: 1, background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                      }
-                      onClick={() => setRigStyle('columns')}
-                    >🏛️ COLUMNAS</button>
+                      onClick={() => setShowPeople(v => !v)}
+                    >🧍 {showPeople ? 'OCULTAR PERSONAS' : 'MOSTRAR PERSONAS'}</button>
+                  </div>
+
+                  <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 12 }}>Dimensiones</label>
+                  {(['w', 'h', 'd'] as const).map(dim => {
+                    const dimLabels: Record<string, string> = { w: 'Ancho (W)', h: 'Alto (H)', d: 'Profundidad (D)' };
+                    return (
+                      <div key={dim} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <label style={{ fontSize: 9, color: C.textMuted, textTransform: 'uppercase', minWidth: 88 }}>{dimLabels[dim]}</label>
+                        <input type="number" min={0.5} max={50} step={0.1} value={cubeDims[dim]}
+                          onChange={e => setCubeDims(prev => ({ ...prev, [dim]: Math.max(0.5, Math.min(50, +e.target.value || 0.5)) }))}
+                          style={{ flex: 1, fontSize: 10, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '4px 6px' }} />
+                        <span style={{ fontSize: 9, color: C.textGhost }}>m</span>
+                      </div>
+                    );
+                  })}
+                  <div style={{ marginTop: 4, textAlign: 'center', fontSize: 9, color: C.textFaint, fontFamily: 'monospace' }}>
+                    {cubeDims.w.toFixed(1)} × {cubeDims.h.toFixed(1)} × {cubeDims.d.toFixed(1)} m
                   </div>
                 </div>
+              )}
+            </div>
 
-                {/* People toggle */}
-                <div style={{ marginBottom: 20, paddingBottom: 20, borderBottom: `1px solid ${C.border}` }}>
-                  <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 8 }}>Personas (escala)</label>
-                  <button
-                    style={showPeople
-                      ? { width: '100%', background: 'transparent', color: C.accent, border: `2px solid ${C.accent}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer', fontWeight: 600 }
-                      : { width: '100%', background: 'transparent', color: C.textMuted, border: `2px solid ${C.borderStrong}`, padding: '8px', fontFamily: 'inherit', fontSize: 10, cursor: 'pointer' }
-                    }
-                    onClick={() => setShowPeople(v => !v)}
-                  >🧍 {showPeople ? 'OCULTAR PERSONAS' : 'MOSTRAR PERSONAS'}</button>
-                </div>
-
-                <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 12 }}>Dimensiones</label>
-                {(['w', 'h', 'd'] as const).map(dim => {
-                  const dimLabels: Record<string, string> = { w: 'Ancho (W)', h: 'Alto (H)', d: 'Profundidad (D)' };
-                  return (
-                    <div key={dim} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                      <label style={{ fontSize: 9, color: C.textMuted, textTransform: 'uppercase', minWidth: 88 }}>{dimLabels[dim]}</label>
-                      <input type="number" min={0.5} max={50} step={0.1} value={cubeDims[dim]}
-                        onChange={e => setCubeDims(prev => ({ ...prev, [dim]: Math.max(0.5, Math.min(50, +e.target.value || 0.5)) }))}
-                        style={{ flex: 1, fontSize: 10, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '4px 6px' }} />
-                      <span style={{ fontSize: 9, color: C.textGhost }}>m</span>
+            {/* RESOLUCIÓN */}
+            <div style={{ borderBottom: `1px solid ${C.border}` }}>
+              <button
+                style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showResolucionPanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setShowResolucionPanel(v => !v)}
+              >
+                <span>RESOLUCIÓN</span>
+                <span>{showResolucionPanel ? '▼' : '▶'}</span>
+              </button>
+              {showResolucionPanel && (
+                <div style={{ padding: '0 16px 16px' }}>
+                  <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 12 }}>Resolución por Cara</label>
+                  {faces.map(face => (
+                    <div key={face.id} style={{ marginBottom: 14 }}>
+                      <p style={{ fontSize: 9, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{face.name}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 9, color: C.textGhost }}>W:</span>
+                        <input type="number" min={64} max={2048} step={1} value={face.resolution.w}
+                          onChange={e => { const v = Math.max(64, Math.min(2048, parseInt(e.target.value) || 64)); updateFace(face.id, { resolution: { ...face.resolution, w: v } }); }}
+                          style={{ width: 60, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '3px 4px' }} />
+                        <span style={{ fontSize: 9, color: C.textGhost }}>×</span>
+                        <span style={{ fontSize: 9, color: C.textGhost }}>H:</span>
+                        <input type="number" min={64} max={2048} step={1} value={face.resolution.h}
+                          onChange={e => { const v = Math.max(64, Math.min(2048, parseInt(e.target.value) || 64)); updateFace(face.id, { resolution: { ...face.resolution, h: v } }); }}
+                          style={{ width: 60, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '3px 4px' }} />
+                      </div>
                     </div>
-                  );
-                })}
-                <div style={{ marginTop: 4, textAlign: 'center', fontSize: 9, color: C.textFaint, fontFamily: 'monospace' }}>
-                  {cubeDims.w.toFixed(1)} × {cubeDims.h.toFixed(1)} × {cubeDims.d.toFixed(1)} m
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* RESOLUCIÓN */}
-          <div style={{ borderBottom: `1px solid ${C.border}` }}>
-            <button
-              style={{ width: '100%', padding: '14px 16px', background: 'transparent', border: 'none', color: showResolucionPanel ? C.textPrimary : C.textMuted, fontFamily: 'inherit', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
-              onClick={() => setShowResolucionPanel(v => !v)}
-            >
-              <span>RESOLUCIÓN</span>
-              <span>{showResolucionPanel ? '▼' : '▶'}</span>
-            </button>
-            {showResolucionPanel && (
-              <div style={{ padding: '0 16px 16px' }}>
-                <label style={{ fontSize: 11, color: C.textLabel, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: 12 }}>Resolución por Cara</label>
-                {faces.map(face => (
-                  <div key={face.id} style={{ marginBottom: 14 }}>
-                    <p style={{ fontSize: 9, color: C.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{face.name}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 9, color: C.textGhost }}>W:</span>
-                      <input type="number" min={64} max={2048} step={1} value={face.resolution.w}
-                        onChange={e => { const v = Math.max(64, Math.min(2048, parseInt(e.target.value) || 64)); updateFace(face.id, { resolution: { ...face.resolution, w: v } }); }}
-                        style={{ width: 60, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '3px 4px' }} />
-                      <span style={{ fontSize: 9, color: C.textGhost }}>×</span>
-                      <span style={{ fontSize: 9, color: C.textGhost }}>H:</span>
-                      <input type="number" min={64} max={2048} step={1} value={face.resolution.h}
-                        onChange={e => { const v = Math.max(64, Math.min(2048, parseInt(e.target.value) || 64)); updateFace(face.id, { resolution: { ...face.resolution, h: v } }); }}
-                        style={{ width: 60, fontSize: 9, background: C.bgInput, border: `2px solid ${C.borderStrong}`, color: C.accent, fontFamily: 'monospace', padding: '3px 4px' }} />
+                  ))}
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginBottom: 4 }}>
+                      <span style={{ color: C.textFaint, textTransform: 'uppercase' }}>Total px</span>
+                      <span style={{ color: C.accent, fontFamily: 'monospace' }}>{totalPixels.toLocaleString()}</span>
                     </div>
+                    <div style={{ fontSize: 9, color: C.textFaint, textTransform: 'uppercase', marginBottom: 4 }}>Res. entrada recomendada:</div>
+                    <div style={{ fontSize: 10, color: C.accent, fontFamily: 'monospace' }}>{recInputW} × {recInputH}</div>
                   </div>
-                ))}
-                <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, marginBottom: 4 }}>
-                    <span style={{ color: C.textFaint, textTransform: 'uppercase' }}>Total px</span>
-                    <span style={{ color: C.accent, fontFamily: 'monospace' }}>{totalPixels.toLocaleString()}</span>
-                  </div>
-                  <div style={{ fontSize: 9, color: C.textFaint, textTransform: 'uppercase', marginBottom: 4 }}>Res. entrada recomendada:</div>
-                  <div style={{ fontSize: 10, color: C.accent, fontFamily: 'monospace' }}>{recInputW} × {recInputH}</div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-        </div>{/* end right sidebar */}
+          </div>{/* end right panel inner */}
+        </div>{/* end right overlay panel */}
 
       </div>{/* end main row */}
 
       {/* ── PRESETS DE ESCENA ── */}
-      <div style={{ borderTop: `1px solid ${C.border}`, padding: '16px 24px', flexShrink: 0 }}>
-        <p style={{ fontSize: 12, color: C.textSubtle, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>PRESETS DE ESCENA</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
-          {([
-            { emoji: '🖼️', title: 'Default', desc: 'Pre grabada', scene: 'trailer' as SceneType, accent: '#0066ff' },
-            { emoji: '🎥', title: 'Camara Virtual', desc: 'Luces dinámicas y estrobos', scene: 'camera' as SceneType, accent: C.variantAccent },
-            { emoji: '🗂️', title: 'Grid', desc: 'Setup para eventos corporativos', scene: 'grid_img' as SceneType, accent: '#ff6600' },
-            { emoji: '🌈', title: 'Gradients', desc: 'Luces para pista de baile', scene: 'gradient' as SceneType, accent: C.accent },
-            { emoji: '🤖', title: 'Preset', desc: 'Crea tu propio preset', scene: 'win98' as SceneType | null, accent: '#888' },
-            { emoji: '⬜', title: 'Blanco', desc: 'Iluminación teatral clásica', scene: 'white' as SceneType, accent: '#ffcc00' },
-          ] as { emoji: string; title: string; desc: string; scene: SceneType | null; accent: string }[]).map((preset, idx) => (
-            <button
-              key={idx}
-              style={{ background: 'transparent', border: `2px solid ${C.borderStrong}`, padding: '16px 8px', textAlign: 'center', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = preset.accent)}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = C.borderStrong)}
-              onClick={() => {
-                if (preset.scene) setFaces(prev => prev.map(f => ({ ...f, scene: preset.scene! })));
-                else setShowMappingUI(true);
-              }}
-            >
-              <span style={{ fontSize: 20 }}>{preset.emoji}</span>
-              <span style={{ fontSize: 10, fontWeight: 500, color: C.textPrimary, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{preset.title}</span>
-              <span style={{ fontSize: 8, color: C.textMuted }}>{preset.desc}</span>
-            </button>
-          ))}
+      <div style={{ borderTop: `1px solid ${C.border}`, flexShrink: 0 }}>
+        {/* Header row with toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: presetsOpen ? `1px solid ${C.border}` : 'none' }}>
+          <span style={{ fontSize: 9, color: C.textGhost, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Presets de escena</span>
+          <button onClick={() => setPresetsOpen(v => !v)} style={{ background: 'transparent', border: `1px solid ${C.border}`, color: C.textGhost, fontSize: 9, cursor: 'pointer', padding: '2px 8px', fontFamily: 'inherit' }}>
+            {presetsOpen ? '▼ ocultar' : '▲ mostrar'}
+          </button>
         </div>
+        {presetsOpen && (
+          <div style={{ padding: '10px 16px 12px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {([
+              { emoji: '🖼️', title: 'Video', scene: 'trailer' as SceneType, accent: '#0066ff' },
+              { emoji: '📹', title: 'Cámara', scene: 'camera' as SceneType, accent: C.variantAccent },
+              { emoji: '▦', title: 'Grid', scene: 'grid_img' as SceneType, accent: '#ff6600' },
+              { emoji: '🌈', title: 'Gradients', scene: 'gradient' as SceneType, accent: C.accent },
+              { emoji: '🖥️', title: 'Glitch', scene: 'win98' as SceneType | null, accent: '#888' },
+              { emoji: '⬜', title: 'Blanco', scene: 'white' as SceneType, accent: '#ffcc00' },
+              { emoji: '🗳️', title: 'Votación', scene: 'vote' as SceneType, accent: '#7c4dff' },
+            ] as { emoji: string; title: string; scene: SceneType | null; accent: string }[]).map((preset, idx) => (
+              <button
+                key={idx}
+                style={{ background: 'transparent', border: `1px solid ${C.borderStrong}`, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 6, color: C.textMuted, fontSize: 10, transition: 'border-color 0.15s, color 0.15s' }}
+                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = preset.accent; (e.currentTarget as HTMLButtonElement).style.color = '#fff'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = C.borderStrong; (e.currentTarget as HTMLButtonElement).style.color = C.textMuted; }}
+                onClick={() => {
+                  if (preset.scene) setFaces(prev => prev.map(f => ({ ...f, scene: preset.scene! })));
+                  else setShowMappingUI(true);
+                }}
+              >
+                <span style={{ fontSize: 13 }}>{preset.emoji}</span>
+                <span style={{ letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 9 }}>{preset.title}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── MAPPING OVERLAY ── */}
