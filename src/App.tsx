@@ -884,7 +884,7 @@ export default function App() {
   const previewCanvasesRef = useRef<Map<number, HTMLCanvasElement>>(new Map());
 
   // ─── React State ───────────────────────────────────────────────────────────
-  const [autoOrbit, setAutoOrbit] = useState(false);
+  const [autoOrbit, setAutoOrbit] = useState(true);
   const [autoOrbitSpeed, setAutoOrbitSpeed] = useState(2.0);
   const [bgColor, setBgColor] = useState('#464646');
   const [leftOpen, setLeftOpen] = useState(true);
@@ -948,7 +948,7 @@ export default function App() {
   const [cameraResolution, setCameraResolution] = useState({ w: 0, h: 0 });
   const [cameraScale, setCameraScale] = useState(1.0);
   const [showMappingUI, setShowMappingUI] = useState(false);
-  const [offFaceOpacity, setOffFaceOpacity] = useState(0.9);
+  const [offFaceOpacity, setOffFaceOpacity] = useState(0.85);
   const [ledCountGlobal] = useState(12);
   const [showFacePanel, setShowFacePanel] = useState(false);
   const [showLightPanel, setShowLightPanel] = useState(false);
